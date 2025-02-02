@@ -1,0 +1,10 @@
+[package]
+name = "rpg-combat-tui"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "A terminal user interface (TUI) application for managing combats in role playing games like D&D."
+categories = ["command-line-utilities"]
+repository = "https://github.com/Bergschrat1/rpg-combat-tui"
+
+[dependencies]
