@@ -1,5 +1,8 @@
+#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+
+use super::dice::roll_dice;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Condition {
@@ -30,7 +33,7 @@ pub enum EntityType {
 pub struct Entity {
     pub name: String,
     pub entity_type: EntityType,
-    pub initiative: i32,
+    pub initiative_modifier: i32,
     pub ac: i32,
     pub max_hp: i32,
     pub current_hp: i32,
@@ -38,11 +41,19 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn new(name: &str, entity_type: EntityType, initiative: i32, ac: i32, max_hp: i32) -> Self {
+    pub fn new(
+        name: &str,
+        entity_type: EntityType,
+        initiative: i32,
+        initiative_modifier: i32,
+        ac: i32,
+        max_hp: i32,
+    ) -> Self {
         Self {
             name: name.to_string(),
             entity_type,
             initiative,
+            initiative_modifier,
             ac,
             max_hp,
             current_hp: max_hp,
