@@ -2,7 +2,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-use super::dice::roll_dice;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Condition {
@@ -44,7 +43,6 @@ impl Entity {
     pub fn new(
         name: &str,
         entity_type: EntityType,
-        initiative: i32,
         initiative_modifier: i32,
         ac: i32,
         max_hp: i32,
@@ -52,7 +50,6 @@ impl Entity {
         Self {
             name: name.to_string(),
             entity_type,
-            initiative,
             initiative_modifier,
             ac,
             max_hp,
