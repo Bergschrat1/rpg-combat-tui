@@ -121,4 +121,48 @@ mod tests {
         ct.next_turn();
         assert_eq!(&ct.get_current_entity().unwrap().name, "monster1.1");
     }
+
+    #[test]
+    fn test_individual_initiative_rolls() {
+        let mut ct = CombatTracker::new();
+        let entity1 = Entity::new("monster", EntityType::Monster, 0, 10, 20);
+        let entity2 = Entity::new("monster", EntityType::Monster, 50, 10, 20);
+        ct.add_entity(entity1);
+        ct.add_entity(entity2);
+
+        let rng = StdRng::seed_from_u64(42);
+        ct.rng = rng;
+        ct.roll_initiative(false);
+
+        // Ensure monsters with the same name have different initiatives
+        assert_ne!(ct.entities[0].initiative, ct.entities[1].initiative);
+    }
+
+    #[test]
+    fn test_player_priority_in_sorting() {
+        let mut ct = CombatTracker::new();
+        let player = Initiative {
+            initiative: 1,
+            entity: Entity::new("player", EntityType::Player, 10, 15, 30),
+        };
+        let monster = Initiative {
+            initiative: 1,
+            entity: Entity::new("monster", EntityType::Monster, 10, 10, 20),
+        };
+        ct.entities = vec![monster, player]; // monster before player
+        ct.sort_by_initiative();
+
+        // Ensure that the player is sorted before the monster with the same initiative
+        assert_eq!(ct.entities[0].entity.entity_type, EntityType::Player);
+    }
+
+    #[test]
+    fn test_empty_combat_tracker() {
+        let mut ct = CombatTracker::new();
+
+        assert!(ct.get_current_entity().is_none());
+
+        ct.next_turn(); // Should not panic
+        assert!(ct.get_current_entity().is_none());
+    }
 }
