@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-
+use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Condition {
@@ -30,8 +30,11 @@ pub enum EntityType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entity {
+    pub id: i32, // for multiple Monsters of the same type
+    pub uuid: Uuid,
     pub name: String,
     pub entity_type: EntityType,
+    pub initiative: i32,
     pub initiative_modifier: i32,
     pub ac: i32,
     pub max_hp: i32,
@@ -48,8 +51,11 @@ impl Entity {
         max_hp: i32,
     ) -> Self {
         Self {
+            id: 0,
+            uuid: Uuid::new_v4(),
             name: name.to_string(),
             entity_type,
+            initiative: 0,
             initiative_modifier,
             ac,
             max_hp,

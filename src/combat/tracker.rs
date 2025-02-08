@@ -3,22 +3,11 @@ use crate::combat::{
     entity::{Entity, EntityType},
 };
 use rand::{rngs::StdRng, SeedableRng};
-
-#[derive(Debug)]
-pub struct Initiative {
-    pub initiative: i32,
-    pub entity: Entity,
-}
-
-impl Initiative {
-    pub fn new(initiative: i32, entity: Entity) -> Self {
-        Self { initiative, entity }
-    }
-}
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct CombatTracker {
-    entities: Vec<Initiative>,
+    entities: Vec<Entity>,
     current_turn: usize,
     round: usize,
     rng: StdRng,
@@ -36,26 +25,46 @@ impl CombatTracker {
 
     pub fn roll_initiative(&mut self, group_by_name: bool) {
         let mut initiative_map = std::collections::HashMap::new();
-        self.entities.iter_mut().for_each(|initiative| {
+        self.entities.iter_mut().for_each(|entity| {
             let rolled_initiative = if group_by_name {
                 *initiative_map
-                    .entry(initiative.entity.name.clone())
-                    .or_insert_with(|| {
-                        roll_dice(&mut self.rng, 20, initiative.entity.initiative_modifier)
-                    })
+                    .entry(entity.name.clone())
+                    .or_insert_with(|| roll_dice(&mut self.rng, 20, entity.initiative_modifier))
             } else {
-                roll_dice(&mut self.rng, 20, initiative.entity.initiative_modifier)
+                roll_dice(&mut self.rng, 20, entity.initiative_modifier)
             };
-            initiative.initiative = rolled_initiative;
+            entity.initiative = rolled_initiative;
         });
         self.sort_by_initiative();
     }
 
-    pub fn add_entity(&mut self, entity: Entity) {
-        self.entities.push(Initiative::new(
-            roll_dice(&mut self.rng, 20, entity.initiative_modifier),
-            entity,
-        ));
+    pub fn add_entity(&mut self, mut new_entity: Entity) {
+        let existing_count = self
+            .entities
+            .iter()
+            .filter(|entity| &entity.name == &new_entity.name)
+            .count();
+
+        if existing_count > 0 {
+            for entity in &mut self.entities {
+                if entity.name == new_entity.name && entity.id == 0 {
+                    entity.id = 1;
+                }
+            }
+            new_entity.id = existing_count as i32 + 1;
+        }
+
+        new_entity.initiative = roll_dice(&mut self.rng, 20, new_entity.initiative_modifier);
+        self.entities.push(new_entity);
+    }
+
+    pub fn remove_entity_by_uuid(&mut self, entity_id: Uuid) {
+        self.entities.retain(|entity| entity.uuid != entity_id);
+
+        // Ensure we don't go out of bounds in case the last entity was removed
+        if self.current_turn >= self.entities.len() {
+            self.current_turn = 0;
+        }
     }
 
     pub fn next_turn(&mut self) {
@@ -70,15 +79,15 @@ impl CombatTracker {
     pub fn get_current_entity(&self) -> Option<Entity> {
         self.entities
             .get(self.current_turn)
-            .map(|initiative| initiative.entity.clone())
+            .map(|entity| entity.clone())
     }
 
     fn sort_by_initiative(&mut self) {
         self.entities.sort_by(|a, b| {
             let initiative_cmp = b.initiative.cmp(&a.initiative);
             if initiative_cmp == std::cmp::Ordering::Equal {
-                matches!(b.entity.entity_type, EntityType::Player)
-                    .cmp(&matches!(a.entity.entity_type, EntityType::Player))
+                matches!(b.entity_type, EntityType::Player)
+                    .cmp(&matches!(a.entity_type, EntityType::Player))
             } else {
                 initiative_cmp
             }
@@ -109,7 +118,7 @@ mod tests {
         ct.roll_initiative(true);
 
         // check that same monsters are rolled together
-        assert_eq!(&ct.entities[0].entity.name, &ct.entities[1].entity.name);
+        assert_eq!(&ct.entities[0].name, &ct.entities[1].name);
         assert_eq!(&ct.entities[0].initiative, &ct.entities[1].initiative);
 
         // check correct initiative order
@@ -141,19 +150,15 @@ mod tests {
     #[test]
     fn test_player_priority_in_sorting() {
         let mut ct = CombatTracker::new();
-        let player = Initiative {
-            initiative: 1,
-            entity: Entity::new("player", EntityType::Player, 10, 15, 30),
-        };
-        let monster = Initiative {
-            initiative: 1,
-            entity: Entity::new("monster", EntityType::Monster, 10, 10, 20),
-        };
+        let mut player = Entity::new("player", EntityType::Player, 10, 15, 30);
+        player.initiative = 1;
+        let mut monster = Entity::new("monster", EntityType::Monster, 10, 10, 20);
+        monster.initiative = 1;
         ct.entities = vec![monster, player]; // monster before player
         ct.sort_by_initiative();
 
         // Ensure that the player is sorted before the monster with the same initiative
-        assert_eq!(ct.entities[0].entity.entity_type, EntityType::Player);
+        assert_eq!(ct.entities[0].entity_type, EntityType::Player);
     }
 
     #[test]
@@ -164,5 +169,32 @@ mod tests {
 
         ct.next_turn(); // Should not panic
         assert!(ct.get_current_entity().is_none());
+    }
+
+    #[test]
+    fn test_add_entity() {
+        let mut ct = CombatTracker::new();
+        let entity1 = Entity::new("monster", EntityType::Monster, 0, 10, 20);
+        let entity2 = Entity::new("monster", EntityType::Monster, 50, 10, 20);
+        let entity3 = Entity::new("monster", EntityType::Monster, 100, 10, 20);
+        ct.add_entity(entity1);
+        assert_eq!(ct.entities[0].id, 0);
+        ct.add_entity(entity2);
+        assert_eq!(ct.entities[0].id, 1);
+        assert_eq!(ct.entities[1].id, 2);
+        ct.add_entity(entity3);
+        assert_eq!(ct.entities[0].id, 1);
+        assert_eq!(ct.entities[1].id, 2);
+        assert_eq!(ct.entities[2].id, 3);
+    }
+
+    #[test]
+    fn test_remove_entry_by_uuid() {
+        let mut ct = CombatTracker::new();
+        let entity1 = Entity::new("monster", EntityType::Monster, 0, 10, 20);
+        let entity2 = Entity::new("monster", EntityType::Monster, 50, 10, 20);
+        ct.add_entity(entity1);
+        ct.add_entity(entity2);
+        assert_eq!(ct.entities.len(), 2);
     }
 }
