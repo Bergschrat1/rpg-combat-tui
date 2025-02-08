@@ -1,9 +1,24 @@
+use std::{fs, path::PathBuf};
+
 use crate::combat::{
     dice::roll_dice,
     entity::{Entity, EntityType},
 };
 use rand::{rngs::StdRng, SeedableRng};
+use serde::Deserialize;
 use uuid::Uuid;
+
+#[derive(Debug, Deserialize)]
+struct CombatYaml {
+    players: Vec<Entity>,
+    monsters: Vec<MonsterEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MonsterEntry {
+    count: Option<usize>,
+    stats: Entity,
+}
 
 #[derive(Debug)]
 pub struct CombatTracker {
@@ -85,6 +100,7 @@ impl CombatTracker {
     fn sort_by_initiative(&mut self) {
         self.entities.sort_by(|a, b| {
             let initiative_cmp = b.initiative.cmp(&a.initiative);
+            // prefer EntityType::Player in the case of a tie
             if initiative_cmp == std::cmp::Ordering::Equal {
                 matches!(b.entity_type, EntityType::Player)
                     .cmp(&matches!(a.entity_type, EntityType::Player))
@@ -93,10 +109,38 @@ impl CombatTracker {
             }
         });
     }
+
+    pub fn from_yaml(path: PathBuf) -> Self {
+        let yaml_str = fs::read_to_string(path).expect("Failed to read YAML file");
+        let combat_data: CombatYaml = serde_yml::from_str(&yaml_str).expect("Failed to parse YAML");
+
+        let mut tracker = CombatTracker::new();
+        for player in combat_data.players {
+            tracker.add_entity(player);
+        }
+        for mut monster_entry in combat_data.monsters {
+            let count = monster_entry.count.unwrap_or(1);
+            for _ in 0..count {
+                if monster_entry.stats.current_hp == 0 {
+                    // set current_hp to max_hp if current_hp not set
+                    monster_entry.stats = Entity {
+                        current_hp: monster_entry.stats.max_hp,
+                        ..monster_entry.stats
+                    };
+                }
+                tracker.add_entity(monster_entry.stats.clone());
+            }
+        }
+
+        tracker
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::{env::temp_dir, io::Write};
+
+    use fs::File;
     use rand::SeedableRng;
 
     use super::*;
@@ -196,5 +240,56 @@ mod tests {
         ct.add_entity(entity1);
         ct.add_entity(entity2);
         assert_eq!(ct.entities.len(), 2);
+    }
+
+    #[test]
+    fn test_from_yaml() {
+        let yaml_content = "
+players:
+  - name: Arthas
+    entity_type: Player
+    initiative_modifier: 2
+    ac: 18
+    max_hp: 45
+    current_hp: 45
+    conditions: []
+
+monsters:
+  - count: 3
+    stats:
+        name: Goblin
+        entity_type: Monster
+        initiative_modifier: 1
+        ac: 13
+        max_hp: 15
+        current_hp: 15
+        conditions: []
+  - stats:
+        name: Orc
+        entity_type: Monster
+        initiative_modifier: 1
+        ac: 13
+        max_hp: 15
+        conditions: [Blinded, Grappled]
+        ";
+        let dir = temp_dir();
+        let file_path = dir.join("combat.yaml");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(file, "{}", yaml_content).unwrap();
+
+        let tracker = CombatTracker::from_yaml(file_path);
+
+        assert_eq!(tracker.entities.len(), 5);
+        assert!(tracker.entities.iter().any(|e| e.name == "Arthas"));
+        assert_eq!(
+            tracker
+                .entities
+                .iter()
+                .filter(|e| e.name == "Goblin")
+                .count(),
+            3
+        );
+        assert_eq!(tracker.entities.last().unwrap().current_hp, 15);
+        assert_eq!(tracker.entities.last().unwrap().conditions.len(), 2);
     }
 }

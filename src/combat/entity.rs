@@ -30,14 +30,18 @@ pub enum EntityType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entity {
+    #[serde(default)]
     pub id: i32, // for multiple Monsters of the same type
+    #[serde(default = "Uuid::new_v4")]
     pub uuid: Uuid,
     pub name: String,
     pub entity_type: EntityType,
+    #[serde(default)]
     pub initiative: i32,
     pub initiative_modifier: i32,
     pub ac: i32,
     pub max_hp: i32,
+    #[serde(default)]
     pub current_hp: i32,
     pub conditions: HashSet<Condition>,
 }
