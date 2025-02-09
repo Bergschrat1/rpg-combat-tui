@@ -57,7 +57,7 @@ impl CombatTracker {
         let existing_count = self
             .entities
             .iter()
-            .filter(|entity| &entity.name == &new_entity.name)
+            .filter(|entity| entity.name == new_entity.name)
             .count();
 
         if existing_count > 0 {
@@ -93,8 +93,7 @@ impl CombatTracker {
 
     pub fn get_current_entity(&self) -> Option<Entity> {
         self.entities
-            .get(self.current_turn)
-            .map(|entity| entity.clone())
+            .get(self.current_turn).cloned()
     }
 
     fn sort_by_initiative(&mut self) {

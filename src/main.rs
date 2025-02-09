@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     // create tui
     let mut terminal = terminal::init()?;
     let mut app = app::App::new(args)?;
-    let _app_result = app.run(&mut terminal)?;
+    app.run(&mut terminal)?;
     if let Err(err) = terminal::restore() {
         eprintln!(
             "failed to restore terminal. Run `reset` or restart your terminal to recover: {}",

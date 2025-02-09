@@ -98,9 +98,15 @@ impl Entity {
     }
 
     pub fn ref_array_string(&self) -> Vec<String> {
+        // TODO this funciton should not be the responsibility of the Entity
+        let display_name = if self.id != 0 {
+            format!("{} ({})", self.name, self.id)
+        } else {
+            self.name.to_string()
+        };
         vec![
             self.initiative.to_string(),
-            self.name.clone(),
+            display_name,
             format!(
                 "{}/{}",
                 self.current_hp.to_string(),

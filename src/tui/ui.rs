@@ -76,7 +76,15 @@ fn draw_popup(frame: &mut Frame, app: &App, area: Rect) -> Result<()> {
 
     // the `trim: false` will stop the text from being cut off when over the edge of the block
     let lines = app.popup.prompt.lines().count();
-    let vertical_padding = (area.height.saturating_sub(lines as u16) / 2).max(1); // Ensure at least 1 line padding
+    let vertical_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Fill(1),
+            Constraint::Fill(1),
+        ])
+        .split(popup_block.inner(area));
+    let vertical_padding = (vertical_layout[1].height.saturating_sub(lines as u16) / 2).max(1); // Ensure at least 1 line padding
 
     // Add vertical padding manually to center the text
     let padded_text = format!(
@@ -88,10 +96,14 @@ fn draw_popup(frame: &mut Frame, app: &App, area: Rect) -> Result<()> {
 
     let exit_paragraph = Paragraph::new(padded_text)
         .alignment(Alignment::Center)
-        .block(popup_block)
+        // .block(popup_block)
         .wrap(Wrap { trim: false });
 
-    frame.render_widget(exit_paragraph, area);
+    frame.render_widget(popup_block, area);
+    frame.render_widget(exit_paragraph, vertical_layout[1]);
+    if app.popup.show_input {
+        frame.render_widget(&app.popup.input, vertical_layout[2]);
+    }
     Ok(())
 }
 
@@ -99,9 +111,9 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) -> Result<()> {
     let header_style = Style::default()
         .fg(app.colors.header_fg)
         .bg(app.colors.header_bg);
-    let selected_row_style = Style::default();
-    // .add_modifier(Modifier::REVERSED)
-    // .fg(app.colors.selected_row_style_fg);
+    let selected_row_style = Style::default()
+        .add_modifier(Modifier::REVERSED)
+        .fg(app.colors.selected_row_style_fg);
 
     let header = ["Ini", "Name", "HP", "AC", "Conditions"]
         .into_iter()

@@ -2,7 +2,7 @@ use crate::combat::tracker::CombatTracker;
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use ratatui::widgets::TableState;
-use tui_textarea::{Input, Key};
+use tui_textarea::{Input, Key, TextArea};
 
 use super::{
     cli::Args,
@@ -10,32 +10,43 @@ use super::{
     ui::{self, TableColors},
 };
 
-#[derive(Debug, Clone, Default)]
-pub struct Popup {
+#[derive(Default)]
+pub struct Popup<'t> {
     pub active: bool,
     pub prompt: String,
+    pub input: TextArea<'t>,
+    pub show_input: bool,
+    pub confirm_action: Option<Box<dyn FnMut(&mut App<'t>, String) + Send>>,
 }
 
-impl Popup {
-    pub fn show(&mut self, prompt: &str) {
+impl<'t> Popup<'t> {
+    pub fn show<F: FnMut(&mut App<'t>, String) + Send + 'static>(
+        &mut self,
+        prompt: &str,
+        show_input: bool,
+        action: F,
+    ) {
         self.active = true;
         self.prompt = prompt.to_string();
+        self.input = TextArea::default();
+        self.show_input = show_input;
+        self.confirm_action = Some(Box::new(action));
     }
+
     pub fn hide(&mut self) {
         self.active = false;
     }
 }
 
-#[derive(Debug)]
-pub struct App {
+pub struct App<'t> {
     pub exit: bool,
     pub tracker: CombatTracker,
     pub state: TableState,
-    pub popup: Popup,
+    pub popup: Popup<'t>,
     pub colors: TableColors,
 }
 
-impl App {
+impl<'t> App<'t> {
     pub fn new(args: Args) -> Result<Self> {
         let mut combat = CombatTracker::from_yaml(&args.combat_file);
         combat.roll_initiative(true);
@@ -59,8 +70,6 @@ impl App {
     /// updates the application's state based on user input
     fn handle_events(&mut self) -> Result<()> {
         match event::read()? {
-            // it's important to check that the event is a key press event as
-            // crossterm also emits key release and repeat events on Windows.
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 if self.popup.active {
                     self.handle_popup_key_event(key_event)
@@ -79,8 +88,15 @@ impl App {
             Input { key: Key::Esc, .. } => self.popup.hide(),
             Input {
                 key: Key::Enter, ..
-            } => self.exit(),
-            _ => (),
+            } => {
+                if let Some(mut action) = self.popup.confirm_action.take() {
+                    action(self, self.popup.input.lines().join(""));
+                }
+                self.popup.hide();
+            }
+            input => {
+                self.popup.input.input(input);
+            }
         };
         Ok(())
     }
@@ -106,11 +122,22 @@ impl App {
             Input { key: Key::Up, .. } => {
                 self.state.select_previous();
             }
-            // TODO add shortcuts Up and Down to select an entity for damage/heal
-            _text_input => {
-
-                // current_field.input(text_input);
+            Input {
+                key: Key::Char('d'),
+                ..
+            } => {
+                if let Some(selected) = self.state.selected() {
+                    self.popup
+                        .show("Enter damage amount:", true, move |app, damage| {
+                            if let Ok(damage) = damage.parse::<i32>() {
+                                if let Some(entity) = app.tracker.entities.get_mut(selected) {
+                                    entity.current_hp = (entity.current_hp - damage).max(0);
+                                }
+                            }
+                        });
+                }
             }
+            _text_input => {}
         }
         Ok(())
     }
@@ -120,7 +147,10 @@ impl App {
     }
 
     fn confirm_close(&mut self) {
-        self.popup
-            .show("Do you want to close the application and print the transaction to stdout?")
+        self.popup.show(
+            "Do you want to close the application and print the transaction to stdout?",
+            false,
+            |app, _| app.exit(),
+        );
     }
 }
