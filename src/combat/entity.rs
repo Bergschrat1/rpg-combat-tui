@@ -1,6 +1,7 @@
 #![allow(dead_code)]
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -19,6 +20,14 @@ pub enum Condition {
     Restrained,
     Stunned,
     Unconscious,
+}
+
+impl fmt::Display for Condition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -86,5 +95,19 @@ impl Entity {
 
     pub fn is_alive(&self) -> bool {
         self.current_hp > 0
+    }
+
+    pub fn ref_array_string(&self) -> Vec<String> {
+        vec![
+            self.initiative.to_string(),
+            self.name.clone(),
+            format!(
+                "{}/{}",
+                self.current_hp.to_string(),
+                self.max_hp.to_string()
+            ),
+            self.ac.to_string(),
+            self.conditions.iter().join(", "),
+        ]
     }
 }

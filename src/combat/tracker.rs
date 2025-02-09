@@ -22,9 +22,9 @@ struct MonsterEntry {
 
 #[derive(Debug)]
 pub struct CombatTracker {
-    entities: Vec<Entity>,
-    current_turn: usize,
-    round: usize,
+    pub entities: Vec<Entity>,
+    pub current_turn: usize,
+    pub round: usize,
     rng: StdRng,
 }
 
@@ -110,7 +110,7 @@ impl CombatTracker {
         });
     }
 
-    pub fn from_yaml(path: PathBuf) -> Self {
+    pub fn from_yaml(path: &PathBuf) -> Self {
         let yaml_str = fs::read_to_string(path).expect("Failed to read YAML file");
         let combat_data: CombatYaml = serde_yml::from_str(&yaml_str).expect("Failed to parse YAML");
 
@@ -277,7 +277,7 @@ monsters:
         let mut file = File::create(&file_path).unwrap();
         writeln!(file, "{}", yaml_content).unwrap();
 
-        let tracker = CombatTracker::from_yaml(file_path);
+        let tracker = CombatTracker::from_yaml(&file_path);
 
         assert_eq!(tracker.entities.len(), 5);
         assert!(tracker.entities.iter().any(|e| e.name == "Arthas"));

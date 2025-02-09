@@ -1,0 +1,32 @@
+players:
+  - name: Arthas
+    entity_type: Player
+    initiative_modifier: 2
+    ac: 18
+    max_hp: 45
+    current_hp: 45
+    conditions: []
+  - name: Moin
+    entity_type: Player
+    initiative_modifier: 2
+    ac: 18
+    max_hp: 45
+    current_hp: 45
+    conditions: []
+monsters:
+  - count: 5
+    stats:
+        name: Goblin
+        entity_type: Monster
+        initiative_modifier: 1
+        ac: 13
+        max_hp: 15
+        current_hp: 15
+        conditions: []
+  - stats:
+        name: Orc
+        entity_type: Monster
+        initiative_modifier: 1
+        ac: 13
+        max_hp: 15
+        conditions: [Blinded, Grappled]

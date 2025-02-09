@@ -1,3 +1,3 @@
 mod dice;
-mod entity;
-mod tracker;
+pub mod entity;
+pub mod tracker;
