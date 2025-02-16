@@ -1,4 +1,4 @@
-use crate::combat::tracker::CombatTracker;
+use crate::combat::{entity, tracker::CombatTracker};
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use ratatui::widgets::TableState;
@@ -20,15 +20,29 @@ pub struct Popup<'t> {
 }
 
 impl<'t> Popup<'t> {
+    pub fn new() -> Self {
+        let mut input = TextArea::default();
+        input.set_alignment(ratatui::layout::Alignment::Center);
+        Self {
+            active: false,
+            prompt: "".to_string(),
+            input,
+            show_input: false,
+            confirm_action: None,
+        }
+    }
     pub fn show<F: FnMut(&mut App<'t>, String) + Send + 'static>(
         &mut self,
         prompt: &str,
         show_input: bool,
         action: F,
     ) {
+        // clear the input
+        self.input.select_all();
+        self.input.cut();
+
         self.active = true;
         self.prompt = prompt.to_string();
-        self.input = TextArea::default();
         self.show_input = show_input;
         self.confirm_action = Some(Box::new(action));
     }
@@ -54,7 +68,7 @@ impl<'t> App<'t> {
             exit: false,
             tracker: combat,
             state: TableState::default().with_selected(0),
-            popup: Popup::default(),
+            popup: Popup::new(),
             colors: TableColors::new(),
         })
     }
@@ -126,20 +140,38 @@ impl<'t> App<'t> {
                 key: Key::Char('d'),
                 ..
             } => {
-                if let Some(selected) = self.state.selected() {
-                    self.popup
-                        .show("Enter damage amount:", true, move |app, damage| {
-                            if let Ok(damage) = damage.parse::<i32>() {
-                                if let Some(entity) = app.tracker.entities.get_mut(selected) {
-                                    entity.current_hp = (entity.current_hp - damage).max(0);
-                                }
-                            }
-                        });
-                }
+                self.damage_heal(false);
+            }
+            Input {
+                key: Key::Char('h'),
+                ..
+            } => {
+                self.damage_heal(true);
             }
             _text_input => {}
         }
         Ok(())
+    }
+
+    fn damage_heal(&mut self, heal: bool) {
+        let prompt = if heal {
+            "Enter heal amount:"
+        } else {
+            "Enter damage amount:"
+        };
+        if let Some(selected) = self.state.selected() {
+            self.popup.show(prompt, true, move |app, input_amount| {
+                if let Ok(amount) = input_amount.parse::<i32>() {
+                    if let Some(entity) = app.tracker.entities.get_mut(selected) {
+                        entity.current_hp = if heal {
+                            (entity.current_hp + amount).max(0).min(entity.max_hp)
+                        } else {
+                            (entity.current_hp - amount).max(0).min(entity.max_hp)
+                        }
+                    }
+                }
+            });
+        }
     }
 
     fn exit(&mut self) {
