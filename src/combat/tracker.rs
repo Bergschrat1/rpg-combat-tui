@@ -5,22 +5,26 @@ use crate::combat::{
     entity::{Entity, EntityType},
 };
 use rand::{rngs::StdRng, SeedableRng};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct CombatYaml {
+    #[serde(default)]
+    current_turn: usize,
+    #[serde(default)]
+    round: usize,
     players: Vec<Entity>,
     monsters: Vec<MonsterEntry>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct MonsterEntry {
     count: Option<usize>,
     stats: Entity,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CombatTracker {
     pub entities: Vec<Entity>,
     pub current_turn: usize,
@@ -91,9 +95,17 @@ impl CombatTracker {
         }
     }
 
+    pub fn prev_turn(&mut self) {
+        if self.current_turn == 0 {
+            self.round = self.round.saturating_sub(1);
+            self.current_turn = self.entities.len() - 1;
+        } else {
+            self.current_turn = self.current_turn.saturating_sub(1);
+        }
+    }
+
     pub fn get_current_entity(&self) -> Option<Entity> {
-        self.entities
-            .get(self.current_turn).cloned()
+        self.entities.get(self.current_turn).cloned()
     }
 
     fn sort_by_initiative(&mut self) {
@@ -114,6 +126,8 @@ impl CombatTracker {
         let combat_data: CombatYaml = serde_yml::from_str(&yaml_str).expect("Failed to parse YAML");
 
         let mut tracker = CombatTracker::new();
+        tracker.current_turn = combat_data.current_turn;
+        tracker.round = combat_data.round;
         for player in combat_data.players {
             tracker.add_entity(player);
         }
@@ -132,6 +146,27 @@ impl CombatTracker {
         }
 
         tracker
+    }
+
+    pub fn to_yaml(&self) -> String {
+        let (players, monsters): (Vec<Entity>, Vec<Entity>) = self
+            .entities
+            .iter()
+            .cloned()
+            .partition(|e| matches!(e.entity_type, EntityType::Player));
+        let combat_data = CombatYaml {
+            current_turn: self.current_turn,
+            round: self.round,
+            players,
+            monsters: monsters
+                .iter()
+                .map(|e| MonsterEntry {
+                    count: Some(1),
+                    stats: e.clone(),
+                })
+                .collect(),
+        };
+        serde_yml::to_string(&combat_data).expect("Failed to serialize combat tracker to YAML")
     }
 }
 

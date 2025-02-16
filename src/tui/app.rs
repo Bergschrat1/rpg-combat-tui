@@ -1,4 +1,4 @@
-use crate::combat::{entity, tracker::CombatTracker};
+use crate::combat::tracker::CombatTracker;
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use ratatui::widgets::TableState;
@@ -61,7 +61,7 @@ pub struct App<'t> {
 }
 
 impl<'t> App<'t> {
-    pub fn new(args: Args) -> Result<Self> {
+    pub fn new(args: &Args) -> Result<Self> {
         let mut combat = CombatTracker::from_yaml(&args.combat_file);
         combat.roll_initiative(true);
         Ok(Self {
@@ -73,12 +73,12 @@ impl<'t> App<'t> {
         })
     }
     /// runs the application's main loop until the user quits
-    pub fn run(&mut self, terminal: &mut terminal::Tui) -> Result<()> {
+    pub fn run(&mut self, terminal: &mut terminal::Tui) -> Result<CombatTracker> {
         while !self.exit {
             terminal.draw(|frame| ui::draw(frame, self).expect("Couldn't draw ui!"))?;
             self.handle_events().wrap_err("handle events failed")?;
         }
-        Ok(())
+        Ok(self.tracker.clone())
     }
 
     /// updates the application's state based on user input
@@ -129,6 +129,9 @@ impl<'t> App<'t> {
                 key: Key::Right, ..
             } => {
                 self.tracker.next_turn();
+            }
+            Input { key: Key::Left, .. } => {
+                self.tracker.prev_turn();
             }
             Input { key: Key::Down, .. } => {
                 self.state.select_next();

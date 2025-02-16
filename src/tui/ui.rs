@@ -8,8 +8,6 @@ use ratatui::{
     Frame,
 };
 
-use crate::combat::entity::Entity;
-
 use super::app::App;
 
 #[derive(Debug)]
