@@ -182,10 +182,9 @@ impl<'t> App<'t> {
     }
 
     fn confirm_close(&mut self) {
-        self.popup.show(
-            "Do you want to close the application and print the transaction to stdout?",
-            false,
-            |app, _| app.exit(),
-        );
+        self.popup
+            .show("Do you want to close the application?", false, |app, _| {
+                app.exit()
+            });
     }
 }

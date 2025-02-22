@@ -1,4 +1,4 @@
-use color_eyre::Result;
+use color_eyre::{owo_colors::OwoColorize, Result};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{palette::material, Color, Modifier, Style, Stylize},
@@ -17,6 +17,7 @@ pub struct TableColors {
     header_fg: Color,
     row_fg: Color,
     selected_row_style_fg: Color,
+    selected_row_style_bg: Color,
     current_turn_style_fg: Color,
     current_turn_style_bg: Color,
     normal_row_color: Color,
@@ -31,9 +32,10 @@ impl TableColors {
             header_bg: material::GREEN.c800,
             header_fg: material::GREEN.c200,
             row_fg: material::GREEN.c200,
-            selected_row_style_fg: material::GREEN.c400,
-            current_turn_style_fg: material::BLUE.c200,
-            current_turn_style_bg: material::BLUE.c400,
+            selected_row_style_fg: material::BLACK,
+            selected_row_style_bg: material::GREEN.c100,
+            current_turn_style_fg: material::BLACK,
+            current_turn_style_bg: material::BLUE.c200,
             normal_row_color: material::GREEN.c900,
             alt_row_color: material::GREEN.c700,
             footer_border_color: material::GREEN.c400,
@@ -70,7 +72,6 @@ fn draw_popup(frame: &mut Frame, app: &App, area: Rect) -> Result<()> {
         .title(Line::from("Confirm").centered())
         .title_bottom(Line::from("<Enter>: Confirm, <Esc>: Decline").centered())
         .borders(Borders::ALL);
-    // .style(Style::default().bg(Color::DarkGray));
 
     // the `trim: false` will stop the text from being cut off when over the edge of the block
     let lines = app.popup.prompt.lines().count();
@@ -106,11 +107,9 @@ fn draw_popup(frame: &mut Frame, app: &App, area: Rect) -> Result<()> {
 }
 
 fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) -> Result<()> {
-    let header_style = Style::default()
-        .fg(app.colors.header_fg)
-        .bg(app.colors.header_bg);
+    let header_style = Style::default().bg(app.colors.header_bg);
     let selected_row_style = Style::default()
-        .add_modifier(Modifier::REVERSED)
+        .bg(app.colors.selected_row_style_bg)
         .fg(app.colors.selected_row_style_fg);
 
     let header = ["Ini", "Name", "HP", "AC", "Conditions"]
@@ -121,17 +120,24 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) -> Result<()> {
         .height(1);
     let rows = app.tracker.entities.iter().enumerate().map(|(i, data)| {
         let item = data.ref_array_string();
-        let color = {
+        let color_bg = {
             if i == app.tracker.current_turn {
-                app.colors.normal_row_color
+                app.colors.current_turn_style_bg
             } else {
-                app.colors.alt_row_color
+                ratatui::style::Color::Reset
+            }
+        };
+        let color_fg = {
+            if i == app.tracker.current_turn {
+                app.colors.current_turn_style_fg
+            } else {
+                ratatui::style::Color::Reset
             }
         };
         item.into_iter()
             .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
             .collect::<Row>()
-            .style(Style::new().fg(app.colors.row_fg).bg(color))
+            .style(Style::new().bg(color_bg).fg(color_fg))
             .height(4)
     });
 
@@ -154,7 +160,7 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) -> Result<()> {
         bar.into(),
         "".into(),
     ]))
-    .bg(app.colors.buffer_bg)
+    // .bg(app.colors.buffer_bg)
     .highlight_spacing(HighlightSpacing::Always);
     frame.render_stateful_widget(t, area, &mut app.state);
 

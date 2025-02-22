@@ -24,6 +24,14 @@ monsters:
         current_hp: 15
         conditions: []
   - stats:
+        name: Goblin
+        entity_type: Monster
+        initiative_modifier: 1
+        ac: 13
+        max_hp: 15
+        current_hp: 10
+        conditions: []
+  - stats:
         name: Orc
         entity_type: Monster
         initiative_modifier: 1
