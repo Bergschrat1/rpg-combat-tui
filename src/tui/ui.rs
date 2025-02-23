@@ -1,7 +1,7 @@
-use color_eyre::{owo_colors::OwoColorize, Result};
+use color_eyre::Result;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{palette::material, Color, Modifier, Style, Stylize},
+    style::{palette::material, Color, Style, Stylize},
     symbols::border,
     text::{Line, Text},
     widgets::{Block, Borders, Cell, Clear, HighlightSpacing, Paragraph, Row, Table, Wrap},
@@ -70,7 +70,15 @@ fn draw_popup(frame: &mut Frame, app: &App, area: Rect) -> Result<()> {
     frame.render_widget(Clear, area);
     let popup_block = Block::default()
         .title(Line::from("Confirm").centered())
-        .title_bottom(Line::from("<Enter>: Confirm, <Esc>: Decline").centered())
+        .title_bottom(
+            Line::from(vec![
+                " Confirm ".into(),
+                "<Enter>".blue().bold(),
+                " Decline ".into(),
+                "<Esc>".blue().bold(),
+            ])
+            .centered(),
+        )
         .borders(Borders::ALL);
 
     // the `trim: false` will stop the text from being cut off when over the edge of the block
@@ -122,6 +130,7 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) -> Result<()> {
         let item = data.ref_array_string();
         let color_bg = {
             if i == app.tracker.current_turn {
+                // highlight current turn
                 app.colors.current_turn_style_bg
             } else {
                 ratatui::style::Color::Reset
@@ -129,6 +138,7 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) -> Result<()> {
         };
         let color_fg = {
             if i == app.tracker.current_turn {
+                // highlight current turn
                 app.colors.current_turn_style_fg
             } else {
                 ratatui::style::Color::Reset
@@ -154,14 +164,15 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) -> Result<()> {
     )
     .header(header)
     .row_highlight_style(selected_row_style)
+    // .bg(app.colors.buffer_bg)
+    .highlight_spacing(HighlightSpacing::Always)
     .highlight_symbol(Text::from(vec![
         "".into(),
         bar.into(),
         bar.into(),
         "".into(),
-    ]))
-    // .bg(app.colors.buffer_bg)
-    .highlight_spacing(HighlightSpacing::Always);
+    ]));
+    // dbg!(highlight_symbol_color);
     frame.render_stateful_widget(t, area, &mut app.state);
 
     Ok(())
@@ -171,8 +182,14 @@ pub fn draw(frame: &mut Frame, app: &mut App) -> Result<()> {
     let title = Line::from(format!("RPG Combat TUI, Round: {}", app.tracker.round).bold());
 
     let instructions = Line::from(vec![
-        "Next Turn".into(),
+        " Prev Turn ".into(),
+        "<Left>".blue().bold(),
+        " Next Turn ".into(),
         "<Right>".blue().bold(),
+        " Select Up ".into(),
+        "<Up>".blue().bold(),
+        " Select Down ".into(),
+        "<Down>".blue().bold(),
         " Quit ".into(),
         "<Esc> ".blue().bold(),
     ]);

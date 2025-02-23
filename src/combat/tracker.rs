@@ -98,7 +98,9 @@ impl CombatTracker {
     pub fn prev_turn(&mut self) {
         if self.current_turn == 0 {
             self.round = self.round.saturating_sub(1);
-            self.current_turn = self.entities.len() - 1;
+            if self.round != 0 {
+                self.current_turn = self.entities.len() - 1;
+            }
         } else {
             self.current_turn = self.current_turn.saturating_sub(1);
         }

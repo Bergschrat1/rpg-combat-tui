@@ -60,7 +60,7 @@ pub struct App<'t> {
     pub colors: TableColors,
 }
 
-impl<'t> App<'t> {
+impl App<'_> {
     pub fn new(args: &Args) -> Result<Self> {
         let mut combat = CombatTracker::from_yaml(&args.combat_file);
         combat.roll_initiative(true);
