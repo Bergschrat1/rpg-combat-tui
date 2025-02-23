@@ -45,14 +45,16 @@ impl CombatTracker {
     pub fn roll_initiative(&mut self, group_by_name: bool) {
         let mut initiative_map = std::collections::HashMap::new();
         self.entities.iter_mut().for_each(|entity| {
-            let rolled_initiative = if group_by_name {
-                *initiative_map
-                    .entry(entity.name.clone())
-                    .or_insert_with(|| roll_dice(&mut self.rng, 20, entity.initiative_modifier))
-            } else {
-                roll_dice(&mut self.rng, 20, entity.initiative_modifier)
-            };
-            entity.initiative = rolled_initiative;
+            if entity.initiative.is_none() {
+                let rolled_initiative = if group_by_name {
+                    *initiative_map
+                        .entry(entity.name.clone())
+                        .or_insert_with(|| roll_dice(&mut self.rng, 20, entity.initiative_modifier))
+                } else {
+                    roll_dice(&mut self.rng, 20, entity.initiative_modifier)
+                };
+                entity.initiative = Some(rolled_initiative);
+            }
         });
         self.sort_by_initiative();
     }
@@ -72,8 +74,10 @@ impl CombatTracker {
             }
             new_entity.id = existing_count as i32 + 1;
         }
-
-        new_entity.initiative = roll_dice(&mut self.rng, 20, new_entity.initiative_modifier);
+        if new_entity.initiative.is_none() {
+            new_entity.initiative =
+                Some(roll_dice(&mut self.rng, 20, new_entity.initiative_modifier));
+        }
         self.entities.push(new_entity);
     }
 

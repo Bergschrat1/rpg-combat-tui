@@ -45,8 +45,7 @@ pub struct Entity {
     pub uuid: Uuid,
     pub name: String,
     pub entity_type: EntityType,
-    #[serde(default)]
-    pub initiative: i32,
+    pub initiative: Option<i32>,
     pub initiative_modifier: i32,
     pub ac: i32,
     pub max_hp: i32,
@@ -68,7 +67,7 @@ impl Entity {
             uuid: Uuid::new_v4(),
             name: name.to_string(),
             entity_type,
-            initiative: 0,
+            initiative: None,
             initiative_modifier,
             ac,
             max_hp,
@@ -105,7 +104,9 @@ impl Entity {
             self.name.to_string()
         };
         vec![
-            self.initiative.to_string(),
+            self.initiative
+                .expect("Initiative needs to be rolled.")
+                .to_string(),
             display_name,
             format!(
                 "{}/{}",

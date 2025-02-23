@@ -9,6 +9,7 @@ players:
   - name: Moin
     entity_type: Player
     initiative_modifier: 2
+    initiative: 15
     ac: 18
     max_hp: 45
     current_hp: 45
