@@ -1,4 +1,4 @@
-use crate::combat::tracker::CombatTracker;
+use crate::combat::{entity::Condition, tracker::CombatTracker};
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use ratatui::widgets::TableState;
@@ -17,6 +17,7 @@ pub struct Popup<'t> {
     pub input: TextArea<'t>,
     pub show_input: bool,
     pub confirm_action: Option<Box<dyn FnMut(&mut App<'t>, String) + Send>>,
+    pub size: (u16, u16),
 }
 
 impl<'t> Popup<'t> {
@@ -29,12 +30,14 @@ impl<'t> Popup<'t> {
             input,
             show_input: false,
             confirm_action: None,
+            size: (30, 20),
         }
     }
     pub fn show<F: FnMut(&mut App<'t>, String) + Send + 'static>(
         &mut self,
         prompt: &str,
         show_input: bool,
+        size: (u16, u16),
         action: F,
     ) {
         // clear the input
@@ -45,6 +48,7 @@ impl<'t> Popup<'t> {
         self.prompt = prompt.to_string();
         self.show_input = show_input;
         self.confirm_action = Some(Box::new(action));
+        self.size = size;
     }
 
     pub fn hide(&mut self) {
@@ -151,6 +155,12 @@ impl App<'_> {
             } => {
                 self.damage_heal(true);
             }
+            Input {
+                key: Key::Char('c'),
+                ..
+            } => {
+                self.change_conditions();
+            }
             _text_input => {}
         }
         Ok(())
@@ -163,18 +173,82 @@ impl App<'_> {
             "Enter damage amount:"
         };
         if let Some(selected) = self.state.selected() {
-            self.popup.show(prompt, true, move |app, input_amount| {
-                if let Ok(amount) = input_amount.parse::<i32>() {
+            self.popup
+                .show(prompt, true, (30, 20), move |app, input_amount| {
+                    if let Ok(amount) = input_amount.parse::<i32>() {
+                        if let Some(entity) = app.tracker.entities.get_mut(selected) {
+                            entity.current_hp = if heal {
+                                (entity.current_hp + amount).max(0).min(entity.max_hp)
+                            } else {
+                                (entity.current_hp - amount).max(0).min(entity.max_hp)
+                            }
+                        }
+                    }
+                });
+        }
+    }
+
+    fn change_conditions(&mut self) {
+        let selected = match self.state.selected() {
+            Some(s) => s,
+            None => return,
+        };
+
+        let entity = match self.tracker.entities.get(selected) {
+            Some(e) => e,
+            None => return,
+        };
+
+        let all_conditions: Vec<Condition> = vec![
+            Condition::Blinded,
+            Condition::Charmed,
+            Condition::Deafened,
+            Condition::Frightened,
+            Condition::Grappled,
+            Condition::Incapacitated,
+            Condition::Invisible,
+            Condition::Paralyzed,
+            Condition::Petrified,
+            Condition::Poisoned,
+            Condition::Prone,
+            Condition::Restrained,
+            Condition::Stunned,
+            Condition::Unconscious,
+        ];
+
+        let prompt_text = all_conditions
+            .iter()
+            .enumerate()
+            .map(|(i, condition)| {
+                let marker = if entity.conditions.contains(condition) {
+                    "[X]"
+                } else {
+                    "[ ]"
+                };
+                format!("{} {} - {}", marker, i + 1, condition)
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        self.popup.show(
+            &format!("Select condition to toggle:\n\n{}", prompt_text),
+            true,
+            (10, 30),
+            move |app, input| {
+                if let Ok(index) = input.parse::<usize>() {
                     if let Some(entity) = app.tracker.entities.get_mut(selected) {
-                        entity.current_hp = if heal {
-                            (entity.current_hp + amount).max(0).min(entity.max_hp)
-                        } else {
-                            (entity.current_hp - amount).max(0).min(entity.max_hp)
+                        if index > 0 && index <= all_conditions.len() {
+                            let condition = &all_conditions[index - 1];
+                            if entity.conditions.contains(condition) {
+                                entity.conditions.remove(condition);
+                            } else {
+                                entity.conditions.insert(condition.clone());
+                            }
                         }
                     }
                 }
-            });
-        }
+            },
+        );
     }
 
     fn exit(&mut self) {
@@ -182,9 +256,11 @@ impl App<'_> {
     }
 
     fn confirm_close(&mut self) {
-        self.popup
-            .show("Do you want to close the application?", false, |app, _| {
-                app.exit()
-            });
+        self.popup.show(
+            "Do you want to close the application?",
+            false,
+            (30, 20),
+            |app, _| app.exit(),
+        );
     }
 }

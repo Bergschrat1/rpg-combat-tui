@@ -86,9 +86,9 @@ fn draw_popup(frame: &mut Frame, app: &App, area: Rect) -> Result<()> {
     let vertical_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Length(1),
             Constraint::Fill(1),
-            Constraint::Fill(1),
-            Constraint::Fill(1),
+            Constraint::Length(1),
         ])
         .split(popup_block.inner(area));
     let vertical_padding = (vertical_layout[1].height.saturating_sub(lines as u16) / 2).max(1); // Ensure at least 1 line padding
@@ -202,7 +202,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) -> Result<()> {
     let inner_area = block.inner(frame.area());
     draw_table(frame, app, inner_area)?;
     if app.popup.active {
-        let popup_area = centered_rect(30, 20, frame.area());
+        let popup_area = centered_rect(app.popup.size.0, app.popup.size.1, frame.area());
         draw_popup(frame, app, popup_area)?;
     }
     Ok(())
