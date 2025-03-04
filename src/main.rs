@@ -24,8 +24,14 @@ fn main() -> Result<()> {
     if args.stdout {
         println!("{}", tracker.to_yaml());
     }
-    if let Some(path) = args.output {
-        fs::write(path, tracker.to_yaml()).expect("Failed to write to file.");
-    }
+    let save_file = args.output.unwrap_or({
+        let mut input_file = args.combat_file.clone();
+        input_file.set_file_name(format!(
+            "{}_save.yml",
+            input_file.file_stem().unwrap().to_string_lossy()
+        ));
+        input_file
+    });
+    fs::write(save_file, tracker.to_yaml()).expect("Failed to write to file.");
     Ok(())
 }
