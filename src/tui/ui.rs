@@ -190,6 +190,8 @@ pub fn draw(frame: &mut Frame, app: &mut App) -> Result<()> {
         "<Up>".blue().bold(),
         " Select Down ".into(),
         "<Down>".blue().bold(),
+        " Re-roll Initiative ".into(),
+        "<Ctrl>+R".blue().bold(),
         " Quit ".into(),
         "<Esc> ".blue().bold(),
     ]);
