@@ -1,3 +1,4 @@
+
 use crate::combat::{entity::Condition, tracker::CombatTracker};
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
@@ -76,6 +77,7 @@ impl App<'_> {
             colors: TableColors::new(),
         })
     }
+
     /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut terminal::Tui) -> Result<CombatTracker> {
         while !self.exit {

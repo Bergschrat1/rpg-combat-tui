@@ -44,6 +44,7 @@ pub struct Entity {
     #[serde(default = "Uuid::new_v4")]
     pub uuid: Uuid,
     pub name: String,
+    #[serde(default = "Entity::default_entity_type")]
     pub entity_type: EntityType,
     pub initiative: Option<i32>,
     pub initiative_modifier: i32,
@@ -51,6 +52,7 @@ pub struct Entity {
     pub max_hp: i32,
     #[serde(default)]
     pub current_hp: i32,
+    #[serde(default)]
     pub conditions: HashSet<Condition>,
 }
 
@@ -74,6 +76,10 @@ impl Entity {
             current_hp: max_hp,
             conditions: HashSet::new(),
         }
+    }
+
+    fn default_entity_type() -> EntityType {
+        EntityType::Player
     }
 
     pub fn take_damage(&mut self, damage: i32) {

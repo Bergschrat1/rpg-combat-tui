@@ -134,20 +134,20 @@ impl CombatTracker {
         let mut tracker = CombatTracker::new();
         tracker.current_turn = combat_data.current_turn;
         tracker.round = combat_data.round;
-        for player in combat_data.players {
+        for mut player in combat_data.players {
+            player.entity_type = EntityType::Player;
             tracker.add_entity(player);
         }
-        for mut monster_entry in combat_data.monsters {
+        for monster_entry in combat_data.monsters {
             let count = monster_entry.count.unwrap_or(1);
             for _ in 0..count {
+                let mut monster = monster_entry.stats.clone();
+                monster.entity_type = EntityType::Monster;
                 if monster_entry.stats.current_hp == 0 {
                     // set current_hp to max_hp if current_hp not set
-                    monster_entry.stats = Entity {
-                        current_hp: monster_entry.stats.max_hp,
-                        ..monster_entry.stats
-                    };
+                    monster.current_hp = monster.max_hp;
                 }
-                tracker.add_entity(monster_entry.stats.clone());
+                tracker.add_entity(monster);
             }
         }
 
@@ -235,9 +235,9 @@ mod tests {
     fn test_player_priority_in_sorting() {
         let mut ct = CombatTracker::new();
         let mut player = Entity::new("player", EntityType::Player, 10, 15, 30);
-        player.initiative = 1;
+        player.initiative = Some(1);
         let mut monster = Entity::new("monster", EntityType::Monster, 10, 10, 20);
-        monster.initiative = 1;
+        monster.initiative = Some(1);
         ct.entities = vec![monster, player]; // monster before player
         ct.sort_by_initiative();
 
