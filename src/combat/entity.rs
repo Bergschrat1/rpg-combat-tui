@@ -30,8 +30,9 @@ impl fmt::Display for Condition {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum EntityType {
+    #[default]
     Player,
     Npc,
     Monster,
@@ -44,7 +45,7 @@ pub struct Entity {
     #[serde(default = "Uuid::new_v4")]
     pub uuid: Uuid,
     pub name: String,
-    #[serde(default = "Entity::default_entity_type")]
+    #[serde(default)]
     pub entity_type: EntityType,
     pub initiative: Option<i32>,
     pub initiative_modifier: i32,
@@ -76,10 +77,6 @@ impl Entity {
             current_hp: max_hp,
             conditions: HashSet::new(),
         }
-    }
-
-    fn default_entity_type() -> EntityType {
-        EntityType::Player
     }
 
     pub fn take_damage(&mut self, damage: i32) {
