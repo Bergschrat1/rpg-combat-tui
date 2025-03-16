@@ -1,4 +1,3 @@
-
 use crate::combat::{entity::Condition, tracker::CombatTracker};
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
@@ -68,7 +67,7 @@ pub struct App<'t> {
 impl App<'_> {
     pub fn new(args: &Args) -> Result<Self> {
         let mut combat = CombatTracker::from_yaml(&args.combat_file);
-        combat.roll_initiative(true);
+        combat.roll_initiative(true, false);
         Ok(Self {
             exit: false,
             tracker: combat,
@@ -162,6 +161,13 @@ impl App<'_> {
                 ..
             } => {
                 self.change_conditions();
+            }
+            Input {
+                key: Key::Char('r'),
+                ctrl: true,
+                ..
+            } => {
+                self.tracker.roll_initiative(true, true); // FIXME: doesn't do anything
             }
             _text_input => {}
         }

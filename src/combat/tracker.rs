@@ -42,10 +42,10 @@ impl CombatTracker {
         }
     }
 
-    pub fn roll_initiative(&mut self, group_by_name: bool) {
+    pub fn roll_initiative(&mut self, group_by_name: bool, re_roll: bool) {
         let mut initiative_map = std::collections::HashMap::new();
         self.entities.iter_mut().for_each(|entity| {
-            if entity.initiative.is_none() {
+            if entity.initiative.is_none() || re_roll {
                 let rolled_initiative = if group_by_name {
                     *initiative_map
                         .entry(entity.name.clone())
@@ -73,10 +73,6 @@ impl CombatTracker {
                 }
             }
             new_entity.id = existing_count as i32 + 1;
-        }
-        if new_entity.initiative.is_none() {
-            new_entity.initiative =
-                Some(roll_dice(&mut self.rng, 20, new_entity.initiative_modifier));
         }
         self.entities.push(new_entity);
     }
@@ -199,7 +195,7 @@ mod tests {
 
         let rng = StdRng::seed_from_u64(42);
         ct.rng = rng;
-        ct.roll_initiative(true);
+        ct.roll_initiative(true, true);
 
         // check that same monsters are rolled together
         assert_eq!(&ct.entities[0].name, &ct.entities[1].name);
@@ -225,7 +221,7 @@ mod tests {
 
         let rng = StdRng::seed_from_u64(42);
         ct.rng = rng;
-        ct.roll_initiative(false);
+        ct.roll_initiative(false, true);
 
         // Ensure monsters with the same name have different initiatives
         assert_ne!(ct.entities[0].initiative, ct.entities[1].initiative);
