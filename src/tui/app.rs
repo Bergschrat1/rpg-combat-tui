@@ -1,3 +1,5 @@
+use std::fs;
+
 use crate::combat::{entity::Condition, tracker::CombatTracker};
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
@@ -66,7 +68,15 @@ pub struct App<'t> {
 
 impl App<'_> {
     pub fn new(args: &Args) -> Result<Self> {
-        let mut combat = CombatTracker::from_yaml(&args.combat_file);
+        let mut combat_yaml_string =
+            fs::read_to_string(&args.combat_file).expect("Failed to read combat file.");
+        // combine combat yaml with player yaml if given
+        if let Some(player_path) = &args.player_characters {
+            let player_yaml_string =
+                fs::read_to_string(player_path).expect("Failed to read player file.");
+            combat_yaml_string = player_yaml_string + &combat_yaml_string;
+        }
+        let mut combat = CombatTracker::from_yaml(combat_yaml_string);
         combat.roll_initiative(true, false);
         Ok(Self {
             exit: false,
@@ -270,5 +280,69 @@ impl App<'_> {
             (30, 20),
             |app, _| app.exit(),
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use fs::File;
+    use std::env::temp_dir;
+    use std::io::Write;
+
+    #[test]
+    fn test_player_character_yaml() {
+        let dir = temp_dir();
+        let combat_file_path = dir.join("combat.yaml");
+        let mut combat_file = File::create(&combat_file_path).unwrap();
+        writeln!(
+            combat_file,
+            r#"
+monsters:
+  - stats:
+        name: Orc
+        entity_type: Monster
+        initiative_modifier: 1
+        ac: 13
+        max_hp: 15
+        conditions: [Blinded, Grappled]
+"#
+        )
+        .unwrap();
+
+        // Create temp player characters file
+        let players_file_path = dir.join("player.yaml");
+        let mut players_file = File::create(&players_file_path).unwrap();
+        writeln!(
+            players_file,
+            r#"
+players:
+  - name: Arthas
+    entity_type: Player
+    initiative_modifier: 30
+    ac: 18
+    max_hp: 45
+    current_hp: 45
+    conditions: []
+"#
+        )
+        .unwrap();
+
+        let args = Args {
+            combat_file: combat_file_path,
+            player_characters: Some(players_file_path),
+            output: None,
+            stdout: false,
+        };
+
+        let app = App::new(&args).unwrap();
+
+        assert_eq!(app.tracker.entities.len(), 2);
+        assert_eq!(
+            app.tracker.entities.first().unwrap().name,
+            "Arthas".to_string()
+        );
+        assert_eq!(app.tracker.entities.last().unwrap().name, "Orc".to_string());
     }
 }

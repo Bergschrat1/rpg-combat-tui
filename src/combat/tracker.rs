@@ -1,5 +1,3 @@
-use std::{fs, path::PathBuf};
-
 use crate::combat::{
     dice::roll_dice,
     entity::{Entity, EntityType},
@@ -123,9 +121,9 @@ impl CombatTracker {
         });
     }
 
-    pub fn from_yaml(path: &PathBuf) -> Self {
-        let yaml_str = fs::read_to_string(path).expect("Failed to read YAML file");
-        let combat_data: CombatYaml = serde_yml::from_str(&yaml_str).expect("Failed to parse YAML");
+    pub fn from_yaml(yaml_string: String) -> Self {
+        let combat_data: CombatYaml =
+            serde_yml::from_str(&yaml_string).expect("Failed to parse YAML");
 
         let mut tracker = CombatTracker::new();
         tracker.current_turn = combat_data.current_turn;
@@ -174,9 +172,6 @@ impl CombatTracker {
 
 #[cfg(test)]
 mod tests {
-    use std::{env::temp_dir, io::Write};
-
-    use fs::File;
     use rand::SeedableRng;
 
     use super::*;
@@ -308,12 +303,7 @@ monsters:
         max_hp: 15
         conditions: [Blinded, Grappled]
         ";
-        let dir = temp_dir();
-        let file_path = dir.join("combat.yaml");
-        let mut file = File::create(&file_path).unwrap();
-        writeln!(file, "{}", yaml_content).unwrap();
-
-        let tracker = CombatTracker::from_yaml(&file_path);
+        let tracker = CombatTracker::from_yaml(yaml_content.to_string());
 
         assert_eq!(tracker.entities.len(), 5);
         assert!(tracker.entities.iter().any(|e| e.name == "Arthas"));

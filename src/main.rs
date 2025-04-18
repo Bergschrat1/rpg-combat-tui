@@ -21,9 +21,11 @@ fn main() -> Result<()> {
             err
         );
     }
+    // print to stdout if --stdout flag is given
     if args.stdout {
         println!("{}", tracker.to_yaml());
     }
+    // write to specified save file or to a the combat file with "_save" suffix
     let save_file = args.output.unwrap_or({
         let mut input_file = args.combat_file.clone();
         input_file.set_file_name(format!(

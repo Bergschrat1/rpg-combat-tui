@@ -16,4 +16,8 @@ pub struct Args {
     /// Print the combat state to stdout
     #[arg(long)]
     pub stdout: bool,
+
+    /// The path to the file that holds the information about the player characters
+    #[arg(long, short)]
+    pub player_characters: Option<PathBuf>,
 }
