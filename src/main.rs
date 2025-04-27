@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-use std::fs;
 
 use clap::Parser;
 use color_eyre::Result;
@@ -25,15 +24,5 @@ fn main() -> Result<()> {
     if args.stdout {
         println!("{}", tracker.to_yaml());
     }
-    // write to specified save file or to a the combat file with "_save" suffix
-    let save_file = args.output.unwrap_or({
-        let mut input_file = args.combat_file.clone();
-        input_file.set_file_name(format!(
-            "{}_save.yml",
-            input_file.file_stem().unwrap().to_string_lossy()
-        ));
-        input_file
-    });
-    fs::write(save_file, tracker.to_yaml()).expect("Failed to write to file.");
     Ok(())
 }

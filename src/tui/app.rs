@@ -1,7 +1,13 @@
-use std::fs;
+use std::{
+    fs::{self},
+    path::PathBuf,
+};
 
 use crate::combat::{entity::Condition, tracker::CombatTracker};
-use color_eyre::{eyre::Context, Result};
+use color_eyre::{
+    eyre::{Context, ContextCompat},
+    Result,
+};
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use ratatui::widgets::TableState;
 use tui_textarea::{Input, Key, TextArea};
@@ -10,6 +16,7 @@ use super::{
     cli::Args,
     terminal,
     ui::{self, TableColors},
+    utils::{load_combat_yaml, validate_yaml_extension},
 };
 
 #[derive(Default)]
@@ -64,26 +71,47 @@ pub struct App<'t> {
     pub state: TableState,
     pub popup: Popup<'t>,
     pub colors: TableColors,
+    pub output_file: PathBuf,
 }
 
 impl App<'_> {
     pub fn new(args: &Args) -> Result<Self> {
-        let mut combat_yaml_string =
-            fs::read_to_string(&args.combat_file).expect("Failed to read combat file.");
-        // combine combat yaml with player yaml if given
-        if let Some(player_path) = &args.player_characters {
-            let player_yaml_string =
-                fs::read_to_string(player_path).expect("Failed to read player file.");
-            combat_yaml_string = player_yaml_string + &combat_yaml_string;
-        }
+        validate_yaml_extension(&args.combat_file)?;
+
+        let combat_yaml_string = load_combat_yaml(args)?;
+
         let mut combat = CombatTracker::from_yaml(combat_yaml_string);
         combat.roll_initiative(true, false);
+
+        // write to specified save file or to a the combat file with "_save" suffix
+        let mut save_file = args.output.clone().unwrap_or({
+            // unwrap is save here because it was already checked that the extension is correct
+            args.combat_file.with_extension(
+                args.combat_file
+                    .extension()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string()
+                    + ".bkp",
+            )
+        });
+        save_file = save_file.with_file_name(
+            ".".to_string()
+                + save_file
+                    .file_name()
+                    .wrap_err("File doesn't have a filename")?
+                    .to_str()
+                    .wrap_err("Something wrong with filename")?,
+        );
+
         Ok(Self {
             exit: false,
             tracker: combat,
             state: TableState::default().with_selected(0),
             popup: Popup::new(),
             colors: TableColors::new(),
+            output_file: save_file,
         })
     }
 
@@ -100,13 +128,18 @@ impl App<'_> {
     fn handle_events(&mut self) -> Result<()> {
         match event::read()? {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                let res: Result<()>;
                 if self.popup.active {
-                    self.handle_popup_key_event(key_event)
-                        .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"))
+                    res = self
+                        .handle_popup_key_event(key_event)
+                        .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"));
                 } else {
-                    self.handle_key_event(key_event)
-                        .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"))
+                    res = self
+                        .handle_key_event(key_event)
+                        .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"));
                 }
+                self.backup()?;
+                res
             }
             _ => Ok(()),
         }
@@ -281,20 +314,25 @@ impl App<'_> {
             |app, _| app.exit(),
         );
     }
+
+    fn backup(&mut self) -> Result<()> {
+        fs::write(&self.output_file, self.tracker.to_yaml())?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use fs::File;
     use std::env::temp_dir;
+    use std::fs::File;
     use std::io::Write;
 
     #[test]
     fn test_player_character_yaml() {
         let dir = temp_dir();
-        let combat_file_path = dir.join("combat.yaml");
+        let combat_file_path = dir.join("combat1.yaml");
         let mut combat_file = File::create(&combat_file_path).unwrap();
         writeln!(
             combat_file,
@@ -344,5 +382,72 @@ players:
             "Arthas".to_string()
         );
         assert_eq!(app.tracker.entities.last().unwrap().name, "Orc".to_string());
+    }
+
+    #[test]
+    fn test_loads_from_save_file_if_exists() {
+        let dir = temp_dir();
+        let combat_file_path = dir.join("combat2.yaml");
+
+        // Create a combat file (normal)
+        let mut combat_file = File::create(&combat_file_path).unwrap();
+        writeln!(
+            combat_file,
+            r#"
+players:
+  - name: Frodo
+    initiative_modifier: 2
+    ac: 16
+    max_hp: 63
+    current_hp: 26
+monsters:
+  - stats:
+        name: Orc
+        entity_type: Monster
+        initiative_modifier: 1
+        ac: 13
+        max_hp: 15
+        conditions: []
+"#
+        )
+        .unwrap();
+
+        // Create a save file (combat.yaml.bkp)
+        let save_file_path = combat_file_path.with_extension("yaml.bkp");
+        let mut save_file = File::create(&save_file_path).unwrap();
+        writeln!(
+            save_file,
+            r#"
+players:
+  - name: Samwise
+    initiative_modifier: 2
+    ac: 16
+    max_hp: 63
+    current_hp: 26
+monsters:
+  - count: 2
+    stats:
+        name: Goblin
+        entity_type: Monster
+        initiative_modifier: 2
+        ac: 12
+        max_hp: 10
+        conditions: []
+"#
+        )
+        .unwrap();
+
+        let args = Args {
+            combat_file: combat_file_path,
+            player_characters: None,
+            output: None,
+            stdout: false,
+        };
+
+        let app = App::new(&args).unwrap();
+
+        // It should load the Goblin from the .bkp file, not the Orc from combat.yaml
+        assert_eq!(app.tracker.entities.len(), 3);
+        assert_eq!(app.tracker.entities[0].name, "Goblin".to_string());
     }
 }
