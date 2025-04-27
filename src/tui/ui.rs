@@ -190,10 +190,18 @@ pub fn draw(frame: &mut Frame, app: &mut App) -> Result<()> {
         "<Up>".blue().bold(),
         " Select Down ".into(),
         "<Down>".blue().bold(),
+        " Toggle Condition ".into(),
+        "C".blue().bold(),
+        " Assign Damage ".into(),
+        "D".blue().bold(),
+        " Heal ".into(),
+        "H".blue().bold(),
         " Re-roll Initiative ".into(),
         "<Ctrl>+R".blue().bold(),
         " Quit ".into(),
         "<Esc> ".blue().bold(),
+        " Reset Combat ".into(),
+        "<Ctrl>+C".blue().bold(),
     ]);
     let block = Block::default()
         .title(title.centered())

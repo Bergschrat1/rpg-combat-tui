@@ -2,6 +2,7 @@ use crate::combat::{
     dice::roll_dice,
     entity::{Entity, EntityType},
 };
+use log::info;
 use rand::{rngs::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -41,6 +42,7 @@ impl CombatTracker {
     }
 
     pub fn roll_initiative(&mut self, group_by_name: bool, re_roll: bool) {
+        info!("Re-rolling initiative");
         let mut initiative_map = std::collections::HashMap::new();
         self.entities.iter_mut().for_each(|entity| {
             if entity.initiative.is_none() || re_roll {
@@ -55,6 +57,16 @@ impl CombatTracker {
             }
         });
         self.sort_by_initiative();
+    }
+
+    pub fn reset_combat(&mut self) {
+        info!("Resetting combat");
+        for entity in self.entities.iter_mut() {
+            entity.current_hp = entity.max_hp;
+            entity.conditions.clear();
+        }
+        self.round = 0;
+        self.current_turn = 0;
     }
 
     pub fn add_entity(&mut self, mut new_entity: Entity) {

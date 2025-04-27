@@ -207,17 +207,24 @@ impl App<'_> {
                 self.damage_heal(true);
             }
             Input {
-                key: Key::Char('c'),
-                ..
-            } => {
-                self.change_conditions();
-            }
-            Input {
                 key: Key::Char('r'),
                 ctrl: true,
                 ..
             } => {
-                self.tracker.roll_initiative(true, true); // FIXME: doesn't do anything
+                self.tracker.roll_initiative(true, true);
+            }
+            Input {
+                key: Key::Char('c'),
+                ctrl: true,
+                ..
+            } => {
+                self.tracker.reset_combat();
+            }
+            Input {
+                key: Key::Char('c'),
+                ..
+            } => {
+                self.change_conditions();
             }
             _text_input => {}
         }
