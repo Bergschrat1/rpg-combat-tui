@@ -130,16 +130,13 @@ impl App<'_> {
     fn handle_events(&mut self) -> Result<()> {
         match event::read()? {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                let res: Result<()>;
-                if self.popup.active {
-                    res = self
-                        .handle_popup_key_event(key_event)
-                        .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"));
+                let res: Result<()> = if self.popup.active {
+                    self.handle_popup_key_event(key_event)
+                        .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"))
                 } else {
-                    res = self
-                        .handle_key_event(key_event)
-                        .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"));
-                }
+                    self.handle_key_event(key_event)
+                        .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"))
+                };
                 self.backup()?;
                 res
             }
@@ -305,7 +302,7 @@ impl App<'_> {
     }
 
     fn exit(&mut self) {
-        info!("Application stoped.");
+        info!("Application stopped.");
         self.exit = true;
     }
 
