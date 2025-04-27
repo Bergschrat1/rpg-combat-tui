@@ -174,10 +174,18 @@ impl App<'_> {
             }
             Input {
                 key: Key::Right, ..
+            }
+            | Input {
+                key: Key::Char(' '),
+                ..
             } => {
                 self.tracker.next_turn();
             }
-            Input { key: Key::Left, .. } => {
+            Input { key: Key::Left, .. }
+            | Input {
+                key: Key::Backspace,
+                ..
+            } => {
                 self.tracker.prev_turn();
             }
             Input { key: Key::Down, .. } => {
