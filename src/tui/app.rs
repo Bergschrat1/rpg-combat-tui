@@ -9,6 +9,7 @@ use color_eyre::{
     Result,
 };
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
+use log::{debug, info};
 use ratatui::widgets::TableState;
 use tui_textarea::{Input, Key, TextArea};
 
@@ -104,6 +105,7 @@ impl App<'_> {
                     .to_str()
                     .wrap_err("Something wrong with filename")?,
         );
+        info!("Using {} as a save file.", &save_file.display());
 
         Ok(Self {
             exit: false,
@@ -303,6 +305,7 @@ impl App<'_> {
     }
 
     fn exit(&mut self) {
+        info!("Application stoped.");
         self.exit = true;
     }
 
@@ -316,6 +319,7 @@ impl App<'_> {
     }
 
     fn backup(&mut self) -> Result<()> {
+        debug!("Writing state to file {}", &self.output_file.display());
         fs::write(&self.output_file, self.tracker.to_yaml())?;
         Ok(())
     }
