@@ -10,7 +10,6 @@ use env_logger::{Builder, Target};
 use tokio::task;
 
 mod combat;
-mod shared;
 mod tui;
 
 use crate::tui::{app, cli, terminal};

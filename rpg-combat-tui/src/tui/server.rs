@@ -1,8 +1,8 @@
 use color_eyre::Result;
+use shared::{ClientMessage, ServerMessage};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
-use crate::shared::lib::{ClientMessage, ServerMessage};
 pub async fn run_server() -> Result<()> {
     let listener = TcpListener::bind("127.0.0.1:8000").await?;
     println!("Server listening on 127.0.0.1:8000");
