@@ -7,12 +7,17 @@ use std::io::Write;
 use clap::Parser;
 use color_eyre::Result;
 use env_logger::{Builder, Target};
+use tokio::task;
+
 mod combat;
+mod shared;
 mod tui;
 
 use crate::tui::{app, cli, terminal};
+use tui::server::run_server; // assumes run_server is in tui::server
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     color_eyre::install()?;
     let log_file = File::create("rpg_combat_tui.log").expect("Failed to create log file");
     Builder::from_default_env()
@@ -32,6 +37,13 @@ fn main() -> Result<()> {
 
     // Example log messages
     info!("Application started");
+
+    // Start the server in the background
+    task::spawn(async {
+        if let Err(e) = run_server().await {
+            eprintln!("Server error: {e}");
+        }
+    });
 
     let args = cli::Args::parse();
     // create tui
