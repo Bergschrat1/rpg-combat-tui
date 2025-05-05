@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize, Serialize)]
-struct CombatYaml {
+struct CombatInfo {
     #[serde(default)]
     current_turn: usize,
     #[serde(default)]
@@ -133,8 +133,28 @@ impl CombatTracker {
         });
     }
 
+    fn get_combat_info(&self) -> CombatInfo {
+        let (players, monsters): (Vec<Entity>, Vec<Entity>) = self
+            .entities
+            .iter()
+            .cloned()
+            .partition(|e| matches!(e.entity_type, EntityType::Player));
+        CombatInfo {
+            current_turn: self.current_turn,
+            round: self.round,
+            players,
+            monsters: monsters
+                .iter()
+                .map(|e| MonsterEntry {
+                    count: Some(1),
+                    stats: e.clone(),
+                })
+                .collect(),
+        }
+    }
+
     pub fn from_yaml(yaml_string: String) -> Self {
-        let combat_data: CombatYaml =
+        let combat_data: CombatInfo =
             serde_yml::from_str(&yaml_string).expect("Failed to parse YAML");
 
         let mut tracker = CombatTracker::new();
@@ -161,24 +181,13 @@ impl CombatTracker {
     }
 
     pub fn to_yaml(&self) -> String {
-        let (players, monsters): (Vec<Entity>, Vec<Entity>) = self
-            .entities
-            .iter()
-            .cloned()
-            .partition(|e| matches!(e.entity_type, EntityType::Player));
-        let combat_data = CombatYaml {
-            current_turn: self.current_turn,
-            round: self.round,
-            players,
-            monsters: monsters
-                .iter()
-                .map(|e| MonsterEntry {
-                    count: Some(1),
-                    stats: e.clone(),
-                })
-                .collect(),
-        };
+        let combat_data = self.get_combat_info();
         serde_yml::to_string(&combat_data).expect("Failed to serialize combat tracker to YAML")
+    }
+
+    pub fn to_json(&self) -> String {
+        let combat_data = self.get_combat_info();
+        serde_json::to_string(&combat_data).expect("Failed to serialize combat tracker to json")
     }
 }
 

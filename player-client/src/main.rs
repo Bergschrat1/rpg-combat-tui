@@ -1,5 +1,4 @@
 use color_eyre::Result;
-use serde_json;
 use shared::{ClientMessage, ServerMessage};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -23,6 +22,7 @@ async fn main() -> Result<()> {
     match response {
         ServerMessage::PlayerView(data) => println!("Player View: {}", data),
         ServerMessage::DmView(_) => println!("Unexpected DM view for player."),
+        ServerMessage::CombatState(_) => todo!(),
     }
 
     Ok(())

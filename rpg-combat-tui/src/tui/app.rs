@@ -1,6 +1,7 @@
 use std::{
     fs::{self},
     path::PathBuf,
+    sync::Arc,
 };
 
 use crate::combat::{entity::Condition, tracker::CombatTracker};
@@ -11,13 +12,13 @@ use color_eyre::{
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use log::{debug, info};
 use ratatui::widgets::TableState;
+use tokio::sync::Mutex;
 use tui_textarea::{Input, Key, TextArea};
 
 use super::{
     cli::Args,
     terminal,
     ui::{self, TableColors},
-    utils::{load_combat_yaml, validate_yaml_extension},
 };
 
 #[derive(Default)]
@@ -68,7 +69,7 @@ impl<'t> Popup<'t> {
 
 pub struct App<'t> {
     pub exit: bool,
-    pub tracker: CombatTracker,
+    pub tracker: Arc<Mutex<CombatTracker>>,
     pub state: TableState,
     pub popup: Popup<'t>,
     pub colors: TableColors,
@@ -76,17 +77,8 @@ pub struct App<'t> {
 }
 
 impl App<'_> {
-    pub fn new(args: &Args) -> Result<Self> {
-        validate_yaml_extension(&args.combat_file)?;
-
-        let combat_yaml_string = load_combat_yaml(args)?;
-
-        let mut combat = CombatTracker::from_yaml(combat_yaml_string);
-        combat.roll_initiative(true, false);
-
-        // write to specified save file or to a the combat file with "_save" suffix
+    pub fn new_with_tracker(args: &Args, tracker: Arc<Mutex<CombatTracker>>) -> Result<Self> {
         let mut save_file = args.output.clone().unwrap_or({
-            // unwrap is save here because it was already checked that the extension is correct
             args.combat_file.with_extension(
                 args.combat_file
                     .extension()
@@ -106,10 +98,11 @@ impl App<'_> {
                     .wrap_err("Something wrong with filename")?,
         );
         info!("Using {} as a save file.", &save_file.display());
+        tracker.blocking_lock().roll_initiative(true, false);
 
         Ok(Self {
             exit: false,
-            tracker: combat,
+            tracker,
             state: TableState::default().with_selected(0),
             popup: Popup::new(),
             colors: TableColors::new(),
@@ -119,11 +112,12 @@ impl App<'_> {
 
     /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut terminal::Tui) -> Result<CombatTracker> {
+        debug!("Running program.");
         while !self.exit {
             terminal.draw(|frame| ui::draw(frame, self).expect("Couldn't draw ui!"))?;
             self.handle_events().wrap_err("handle events failed")?;
         }
-        Ok(self.tracker.clone())
+        Ok(self.tracker.blocking_lock().clone())
     }
 
     /// updates the application's state based on user input
@@ -179,14 +173,14 @@ impl App<'_> {
                 key: Key::Char(' '),
                 ..
             } => {
-                self.tracker.next_turn();
+                self.tracker.blocking_lock().next_turn();
             }
             Input { key: Key::Left, .. }
             | Input {
                 key: Key::Backspace,
                 ..
             } => {
-                self.tracker.prev_turn();
+                self.tracker.blocking_lock().prev_turn();
             }
             Input { key: Key::Down, .. } => {
                 self.state.select_next();
@@ -211,14 +205,14 @@ impl App<'_> {
                 ctrl: true,
                 ..
             } => {
-                self.tracker.roll_initiative(true, true);
+                self.tracker.blocking_lock().roll_initiative(true, true);
             }
             Input {
                 key: Key::Char('c'),
                 ctrl: true,
                 ..
             } => {
-                self.tracker.reset_combat();
+                self.tracker.blocking_lock().reset_combat();
             }
             Input {
                 key: Key::Char('c'),
@@ -241,7 +235,8 @@ impl App<'_> {
             self.popup
                 .show(prompt, true, (30, 20), move |app, input_amount| {
                     if let Ok(amount) = input_amount.parse::<i32>() {
-                        if let Some(entity) = app.tracker.entities.get_mut(selected) {
+                        if let Some(entity) = app.tracker.blocking_lock().entities.get_mut(selected)
+                        {
                             entity.current_hp = if heal {
                                 (entity.current_hp + amount).max(0).min(entity.max_hp)
                             } else {
@@ -259,7 +254,8 @@ impl App<'_> {
             None => return,
         };
 
-        let entity = match self.tracker.entities.get(selected) {
+        let tracker = self.tracker.blocking_lock();
+        let entity = match tracker.entities.get(selected) {
             Some(e) => e,
             None => return,
         };
@@ -301,7 +297,7 @@ impl App<'_> {
             (10, 30),
             move |app, input| {
                 if let Ok(index) = input.parse::<usize>() {
-                    if let Some(entity) = app.tracker.entities.get_mut(selected) {
+                    if let Some(entity) = app.tracker.blocking_lock().entities.get_mut(selected) {
                         if index > 0 && index <= all_conditions.len() {
                             let condition = &all_conditions[index - 1];
                             if entity.conditions.contains(condition) {
@@ -332,7 +328,7 @@ impl App<'_> {
 
     fn backup(&mut self) -> Result<()> {
         debug!("Writing state to file {}", &self.output_file.display());
-        fs::write(&self.output_file, self.tracker.to_yaml())?;
+        fs::write(&self.output_file, self.tracker.blocking_lock().to_yaml())?;
         Ok(())
     }
 }
@@ -390,14 +386,18 @@ players:
             stdout: false,
         };
 
-        let app = App::new(&args).unwrap();
+        let tracker = Arc::new(Mutex::new(CombatTracker::new()));
+        let app = App::new_with_tracker(&args, Arc::clone(&tracker)).unwrap();
 
-        assert_eq!(app.tracker.entities.len(), 2);
+        assert_eq!(app.tracker.blocking_lock().entities.len(), 2);
         assert_eq!(
-            app.tracker.entities.first().unwrap().name,
+            app.tracker.blocking_lock().entities.first().unwrap().name,
             "Arthas".to_string()
         );
-        assert_eq!(app.tracker.entities.last().unwrap().name, "Orc".to_string());
+        assert_eq!(
+            app.tracker.blocking_lock().entities.last().unwrap().name,
+            "Orc".to_string()
+        );
     }
 
     #[test]
@@ -460,10 +460,14 @@ monsters:
             stdout: false,
         };
 
-        let app = App::new(&args).unwrap();
+        let tracker = Arc::new(Mutex::new(CombatTracker::new()));
+        let app = App::new_with_tracker(&args, Arc::clone(&tracker)).unwrap();
 
         // It should load the Goblin from the .bkp file, not the Orc from combat.yaml
-        assert_eq!(app.tracker.entities.len(), 3);
-        assert_eq!(app.tracker.entities[0].name, "Goblin".to_string());
+        assert_eq!(app.tracker.blocking_lock().entities.len(), 3);
+        assert_eq!(
+            app.tracker.blocking_lock().entities[0].name,
+            "Goblin".to_string()
+        );
     }
 }

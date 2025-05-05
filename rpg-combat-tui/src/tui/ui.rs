@@ -126,10 +126,11 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) -> Result<()> {
         .collect::<Row>()
         .style(header_style)
         .height(1);
-    let rows = app.tracker.entities.iter().enumerate().map(|(i, data)| {
+    let tracker = app.tracker.blocking_lock();
+    let rows = tracker.entities.iter().enumerate().map(|(i, data)| {
         let item = data.ref_array_string();
         let color_bg = {
-            if i == app.tracker.current_turn {
+            if i == tracker.current_turn {
                 // highlight current turn
                 app.colors.current_turn_style_bg
             } else {
@@ -137,7 +138,7 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) -> Result<()> {
             }
         };
         let color_fg = {
-            if i == app.tracker.current_turn {
+            if i == tracker.current_turn {
                 // highlight current turn
                 app.colors.current_turn_style_fg
             } else {
@@ -179,7 +180,13 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) -> Result<()> {
 }
 
 pub fn draw(frame: &mut Frame, app: &mut App) -> Result<()> {
-    let title = Line::from(format!("RPG Combat TUI, Round: {}", app.tracker.round).bold());
+    let title = Line::from(
+        format!(
+            "RPG Combat TUI, Round: {}",
+            app.tracker.blocking_lock().round
+        )
+        .bold(),
+    );
 
     let instructions = Line::from(vec![
         " Prev Turn ".into(),

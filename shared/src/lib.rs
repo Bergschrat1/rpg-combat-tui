@@ -10,4 +10,5 @@ pub enum ClientMessage {
 pub enum ServerMessage {
     DmView(String),
     PlayerView(String),
+    CombatState(String),
 }
