@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use color_eyre::Result;
+use log::info;
 use shared::{ClientMessage, ServerMessage};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -20,6 +21,7 @@ pub async fn run_server(state: Arc<Mutex<CombatTracker>>) -> Result<()> {
             match socket.read(&mut buffer).await {
                 Ok(n) if n > 0 => match serde_json::from_slice::<ClientMessage>(&buffer[..n]) {
                     Ok(msg) => {
+                        info!("Request recieved: {:?}", &msg);
                         let response = {
                             let state = state.lock().await;
                             match msg {
@@ -29,6 +31,7 @@ pub async fn run_server(state: Arc<Mutex<CombatTracker>>) -> Result<()> {
                                 ClientMessage::GetDmView => ServerMessage::DmView(state.to_json()),
                             }
                         };
+                        info!("Sending response: {:?}", &response);
                         let json = serde_json::to_vec(&response).unwrap();
                         let _ = socket.write_all(&json).await;
                     }

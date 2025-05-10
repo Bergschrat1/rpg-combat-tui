@@ -15,8 +15,8 @@ async fn main() -> Result<()> {
     stream.write_all(&json).await?;
 
     // Wait for and read the response
-    let mut buf = vec![0u8; 1024];
-    let n = stream.read(&mut buf).await?;
+    let mut buf = vec![];
+    let n = stream.read_to_end(&mut buf).await?;
     let response: ServerMessage = serde_json::from_slice(&buf[..n])?;
 
     match response {
