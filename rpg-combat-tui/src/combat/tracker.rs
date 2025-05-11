@@ -2,7 +2,7 @@ use crate::combat::{
     dice::roll_dice,
     entity::{Entity, EntityType},
 };
-use log::info;
+use log::{debug, info};
 use rand::{rngs::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -120,7 +120,8 @@ impl CombatTracker {
         self.entities.get(self.current_turn).cloned()
     }
 
-    fn sort_by_initiative(&mut self) {
+    pub fn sort_by_initiative(&mut self) {
+        debug!("Sorting by initiative!");
         self.entities.sort_by(|a, b| {
             let initiative_cmp = b.initiative.cmp(&a.initiative);
             // prefer EntityType::Player in the case of a tie

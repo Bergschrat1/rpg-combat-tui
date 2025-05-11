@@ -201,6 +201,12 @@ impl App<'_> {
                 self.damage_heal(true);
             }
             Input {
+                key: Key::Char('i'),
+                ..
+            } => {
+                self.set_initiative();
+            }
+            Input {
                 key: Key::Char('r'),
                 ctrl: true,
                 ..
@@ -246,6 +252,26 @@ impl App<'_> {
                     }
                 });
         }
+    }
+
+    fn set_initiative(&mut self) {
+        let prompt = "Enter Initiative:";
+        if let Some(selected) = self.state.selected() {
+            self.popup
+                .show(prompt, true, (30, 20), move |app, input_amount| {
+                    if let Ok(new_ini) = input_amount.parse::<i32>() {
+                        let mut tracker = app.tracker.blocking_lock();
+                        if let Some(entity) = tracker.entities.get_mut(selected) {
+                            info!(
+                                "Setting initiative of entity {} ({}) to {}",
+                                entity.name, entity.id, &new_ini
+                            );
+                            entity.initiative = Some(new_ini);
+                            tracker.sort_by_initiative();
+                        }
+                    }
+                });
+        };
     }
 
     fn change_conditions(&mut self) {
