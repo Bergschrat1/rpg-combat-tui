@@ -361,6 +361,8 @@ impl App<'_> {
 
 #[cfg(test)]
 mod tests {
+    use crate::tui::utils::load_combat_yaml;
+
     use super::*;
 
     use std::env::temp_dir;
@@ -412,7 +414,9 @@ players:
             stdout: false,
         };
 
-        let tracker = Arc::new(Mutex::new(CombatTracker::new()));
+        let tracker = Arc::new(Mutex::new(CombatTracker::from_yaml(
+            load_combat_yaml(&args).unwrap(),
+        )));
         let app = App::new_with_tracker(&args, Arc::clone(&tracker)).unwrap();
 
         assert_eq!(app.tracker.blocking_lock().entities.len(), 2);
@@ -455,7 +459,12 @@ monsters:
         .unwrap();
 
         // Create a save file (combat.yaml.bkp)
-        let save_file_path = combat_file_path.with_extension("yaml.bkp");
+        let mut save_file_path = combat_file_path.clone();
+        if let Some(file_name) = combat_file_path.file_name().and_then(|f| f.to_str()) {
+            let backup_name = format!(".{}.bkp", file_name);
+            save_file_path.set_file_name(backup_name);
+        };
+        dbg!(&save_file_path);
         let mut save_file = File::create(&save_file_path).unwrap();
         writeln!(
             save_file,
@@ -486,9 +495,12 @@ monsters:
             stdout: false,
         };
 
-        let tracker = Arc::new(Mutex::new(CombatTracker::new()));
+        let tracker = Arc::new(Mutex::new(CombatTracker::from_yaml(
+            load_combat_yaml(&args).unwrap(),
+        )));
         let app = App::new_with_tracker(&args, Arc::clone(&tracker)).unwrap();
 
+        println!("{}", app.tracker.blocking_lock().to_yaml());
         // It should load the Goblin from the .bkp file, not the Orc from combat.yaml
         assert_eq!(app.tracker.blocking_lock().entities.len(), 3);
         assert_eq!(

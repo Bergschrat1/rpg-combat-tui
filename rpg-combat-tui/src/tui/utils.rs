@@ -9,13 +9,13 @@ use super::cli::Args;
 
 /// Returns the path to the save state for the given combat file if it exists
 pub fn check_for_save_file(combat_file: &Path) -> Option<PathBuf> {
-    let save_extension = combat_file.extension()?.to_str()?.to_string() + ".bkp";
-    let save_filename = ".".to_string() + combat_file.file_name().unwrap().to_str().unwrap_or("");
-    let save_file = combat_file
-        .with_file_name(save_filename)
-        .with_extension(save_extension);
-    if save_file.exists() {
-        Some(save_file)
+    let mut save_file_path = combat_file.to_path_buf();
+    if let Some(file_name) = combat_file.file_name().and_then(|f| f.to_str()) {
+        let backup_name = format!(".{}.bkp", file_name);
+        save_file_path.set_file_name(backup_name);
+    };
+    if save_file_path.exists() {
+        Some(save_file_path)
     } else {
         None
     }
