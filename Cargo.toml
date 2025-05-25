@@ -5,3 +5,8 @@ members = [
   "player-client",
   "shared",
 ]
+
+
+[package]
+name = "parent_package"
+version = "1"
