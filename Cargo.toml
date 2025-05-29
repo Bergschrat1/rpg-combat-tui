@@ -7,6 +7,6 @@ members = [
 ]
 
 
-[package]
-name = "parent_package"
-version = "1"
+# [package]
+# name = "parent_package"
+# version = "0.0.1"
