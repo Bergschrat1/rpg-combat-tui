@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub mod combat;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientMessage {
     GetPlayerView,

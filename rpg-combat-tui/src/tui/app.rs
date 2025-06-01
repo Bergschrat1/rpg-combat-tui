@@ -4,11 +4,11 @@ use std::{
     sync::Arc,
 };
 
-use crate::combat::{entity::Condition, tracker::CombatTracker};
 use color_eyre::{
     eyre::{Context, ContextCompat},
     Result,
 };
+use core::combat::{entity::Condition, tracker::CombatTracker};
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use log::{debug, info};
 use ratatui::widgets::TableState;

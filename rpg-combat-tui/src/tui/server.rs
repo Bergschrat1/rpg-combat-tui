@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use color_eyre::Result;
+use core::{ClientMessage, ServerMessage};
 use log::info;
-use shared::{ClientMessage, ServerMessage};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
-use crate::combat::tracker::CombatTracker;
+use core::combat::tracker::CombatTracker;
 
 pub async fn run_server(state: Arc<Mutex<CombatTracker>>) -> Result<()> {
     let listener = TcpListener::bind("127.0.0.1:8000").await?;

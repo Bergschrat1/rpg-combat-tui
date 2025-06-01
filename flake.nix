@@ -65,7 +65,7 @@
               ./Cargo.lock
               (craneLib.fileset.commonCargoSources ./rpg-combat-tui)
               (craneLib.fileset.commonCargoSources ./player-client)
-              (craneLib.fileset.commonCargoSources ./shared)
+              (craneLib.fileset.commonCargoSources ./core)
               # (craneLib.fileset.commonCargoSources crate)
             ];
           };
@@ -88,19 +88,19 @@
           }
         );
 
-        shared = craneLib.buildPackage (
+        core = craneLib.buildPackage (
           individualCrateArgs // {
-            pname = "shared";
+            pname = "core";
             version = "0.1.0";
-            cargoExtraArgs = "-p shared";
-            src = fileSetForCrate ./shared;
+            cargoExtraArgs = "-p core";
+            src = fileSetForCrate ./core;
           }
         );
       in
       {
         checks = {
           # Build the crates as part of `nix flake check` for convenience
-          inherit rpg-combat-tui player-client shared;
+          inherit rpg-combat-tui player-client core;
 
           # Run clippy (and deny all warnings) on the workspace source,
           # again, reusing the dependency artifacts from above.
@@ -189,7 +189,7 @@
         };
 
         packages = {
-          inherit rpg-combat-tui player-client shared;
+          inherit rpg-combat-tui player-client core;
         };
 
         apps = {

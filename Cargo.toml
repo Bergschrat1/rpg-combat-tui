@@ -3,5 +3,5 @@ resolver = "2"
 members = [
   "rpg-combat-tui",
   "player-client",
-  "shared",
+  "core",
 ]

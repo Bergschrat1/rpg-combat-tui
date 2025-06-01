@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use combat::tracker::CombatTracker;
+use core::combat::tracker::CombatTracker;
 use log::info;
 use std::io::Write;
 use std::{fs::File, sync::Arc};
@@ -11,7 +11,6 @@ use clap::Parser;
 use color_eyre::Result;
 use env_logger::{Builder, Target};
 
-mod combat;
 mod tui;
 
 use crate::tui::{app, cli, terminal};
