@@ -36,8 +36,6 @@
 
         commonArgs = {
           src = ./.;
-          pname = "my-workspace";
-          version = "0.0.0";
           strictDeps = true;
 
           buildInputs =
@@ -48,7 +46,10 @@
             ];
         };
 
-        cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+        cargoArtifacts = craneLib.buildDepsOnly (commonArgs // {
+          pname = "my-workspace";
+          version = "0.0.0";
+        });
 
         individualCrateArgs = commonArgs // {
           inherit cargoArtifacts;
@@ -108,16 +109,18 @@
           # we can block the CI if there are issues here, but not
           # prevent downstream consumers from building our crate by itself.
           my-workspace-clippy = craneLib.cargoClippy (
-            commonArgs
-            // {
+            commonArgs // {
+              pname = "my-workspace";
+              version = "0.0.0";
               inherit cargoArtifacts;
               cargoClippyExtraArgs = "--all-targets -- --deny warnings";
             }
           );
 
           my-workspace-doc = craneLib.cargoDoc (
-            commonArgs
-            // {
+            commonArgs // {
+              pname = "my-workspace";
+              version = "0.0.0";
               inherit cargoArtifacts;
             }
           );
@@ -125,30 +128,39 @@
           # Check formatting
           my-workspace-fmt = craneLib.cargoFmt {
             inherit src;
+            pname = "my-workspace-fmt";
+            version = "0.0.0";
           };
 
           my-workspace-toml-fmt = craneLib.taploFmt {
             src = pkgs.lib.sources.sourceFilesBySuffices src [ ".toml" ];
             # taplo arguments can be further customized below as needed
             # taploExtraArgs = "--config ./taplo.toml";
+            pname = "my-workspace-toml-fmt";
+            version = "0.0.0";
           };
 
           # Audit dependencies
           my-workspace-audit = craneLib.cargoAudit {
             inherit src advisory-db;
+            pname = "my-workspace";
+            version = "0.0.0";
           };
 
           # Audit licenses
           my-workspace-deny = craneLib.cargoDeny {
             inherit src;
+            pname = "my-workspace";
+            version = "0.0.0";
           };
 
           # Run tests with cargo-nextest
           # Consider setting `doCheck = false` on other crate derivations
           # if you do not want the tests to run twice
           my-workspace-nextest = craneLib.cargoNextest (
-            commonArgs
-            // {
+            commonArgs // {
+              pname = "my-workspace";
+              version = "0.0.0";
               inherit cargoArtifacts;
               partitions = 1;
               partitionType = "count";
@@ -160,12 +172,13 @@
           my-workspace-hakari = craneLib.mkCargoDerivation {
             inherit src;
             pname = "my-workspace-hakari";
+            version = "0.0.0";
             cargoArtifacts = null;
             doInstallCargoArtifacts = false;
 
             buildPhaseCargoCommand = ''
-              cargo hakari generate --diff  # workspace-hack Cargo.toml is up-to-date
-              cargo hakari manage-deps --dry-run  # all workspace crates depend on workspace-hack
+              cargo hakari generate --diff
+              cargo hakari manage-deps --dry-run
               cargo hakari verify
             '';
 
@@ -196,9 +209,7 @@
           # MY_CUSTOM_DEVELOPMENT_VAR = "something else";
 
           # Extra inputs can be added here; cargo and rustc are provided by default.
-          packages = [
-            pkgs.cargo-hakari
-          ];
+          packages = [ pkgs.cargo-hakari pkgs.rust-analyzer ];
         };
       }
     );
