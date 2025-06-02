@@ -31,6 +31,12 @@ pub struct CombatTracker {
     rng: StdRng,
 }
 
+impl Default for CombatTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CombatTracker {
     pub fn new() -> Self {
         Self {
@@ -184,11 +190,6 @@ impl CombatTracker {
     pub fn to_yaml(&self) -> String {
         let combat_data = self.get_combat_info();
         serde_yml::to_string(&combat_data).expect("Failed to serialize combat tracker to YAML")
-    }
-
-    pub fn to_json(&self) -> String {
-        let combat_data = self.get_combat_info();
-        serde_json::to_string(&combat_data).expect("Failed to serialize combat tracker to json")
     }
 }
 

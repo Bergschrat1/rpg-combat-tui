@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 pub mod combat;
+pub mod dto;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientMessage {
     GetPlayerView,
-    GetDmView,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

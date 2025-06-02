@@ -1,7 +1,10 @@
 use color_eyre::Result;
+use ratatui::prelude::Stylize;
 use ratatui::style::palette::material;
 use ratatui::style::Color;
+use ratatui::symbols::border;
 use ratatui::text::Line;
+use ratatui::widgets::{Block, Borders};
 use ratatui::Frame;
 
 use crate::app::App;
@@ -40,13 +43,7 @@ impl TableColors {
 }
 
 pub fn draw(frame: &mut Frame, app: &mut App) -> Result<()> {
-    let title = Line::from(
-        format!(
-            "RPG Combat TUI, Round: {}",
-            app.tracker.blocking_lock().round
-        )
-        .bold(),
-    );
+    let title = Line::from(format!("RPG Combat TUI, Round: {}", app.tracker.round).bold());
 
     let instructions = Line::from(vec![
         " Prev Turn ".into(),
@@ -77,10 +74,12 @@ pub fn draw(frame: &mut Frame, app: &mut App) -> Result<()> {
         .border_set(border::THICK);
     frame.render_widget(&block, frame.area());
     let inner_area = block.inner(frame.area());
-    draw_table(frame, app, inner_area)?;
-    if app.popup.active {
-        let popup_area = centered_rect(app.popup.size.0, app.popup.size.1, frame.area());
-        draw_popup(frame, app, popup_area)?;
-    }
+    let state = Line::from(format!("{:?}", app.tracker));
+    frame.render_widget(state, inner_area);
+    // draw_table(frame, app, inner_area)?;
+    // if app.popup.active {
+    //     let popup_area = centered_rect(app.popup.size.0, app.popup.size.1, frame.area());
+    //     draw_popup(frame, app, popup_area)?;
+    // }
     Ok(())
 }

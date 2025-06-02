@@ -1,3 +1,4 @@
+use core::dto::PlayerClientState;
 use std::sync::Arc;
 
 use color_eyre::Result;
@@ -23,12 +24,13 @@ pub async fn run_server(state: Arc<Mutex<CombatTracker>>) -> Result<()> {
                     Ok(msg) => {
                         info!("Request recieved: {:?}", &msg);
                         let response = {
-                            let state = state.lock().await;
+                            let tracker_guard = state.lock().await;
+                            let dto_state: PlayerClientState =
+                                PlayerClientState::from(&*tracker_guard);
                             match msg {
-                                ClientMessage::GetPlayerView => {
-                                    ServerMessage::PlayerView(state.to_json())
-                                }
-                                ClientMessage::GetDmView => ServerMessage::DmView(state.to_json()),
+                                ClientMessage::GetPlayerView => ServerMessage::PlayerView(
+                                    serde_json::to_string(&dto_state).unwrap(),
+                                ),
                             }
                         };
                         info!("Sending response: {:?}", &response);
