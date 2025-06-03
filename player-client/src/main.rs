@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
     tokio::task::spawn_blocking(move || {
         let mut terminal = terminal::init().expect("failed to init terminal");
         let mut app = app::App::new(&args).expect("failed to start app");
-        let _result = app.run(&mut terminal);
+        let _result = tokio::runtime::Handle::current().block_on(app.run(&mut terminal));
 
         if let Err(err) = terminal::restore() {
             eprintln!("failed to restore terminal: {err}");

@@ -1,17 +1,15 @@
 use core::dto::PlayerClientState;
-use core::ClientMessage;
-use core::ServerMessage;
+use std::sync::Arc;
+
+use color_eyre::Result;
+use core::{ClientMessage, ServerMessage};
+use log::{debug, info};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 
 use crate::terminal;
 use crate::ui::TableColors;
 use crate::{cli::Args, ui};
-use color_eyre::Result;
-use log::debug;
-use log::info;
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpStream,
-};
 
 pub struct App {
     pub exit: bool,
@@ -20,7 +18,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(args: &Args) -> Result<Self> {
+    pub fn new(_args: &Args) -> Result<Self> {
         info!("Initializing App");
         Ok(Self {
             exit: false,
@@ -30,17 +28,27 @@ impl App {
     }
 
     pub async fn run(&mut self, terminal: &mut terminal::Tui) -> Result<()> {
-        debug!("Running program.");
+        debug!("Running player client loop");
         let mut stream = TcpStream::connect("127.0.0.1:8000").await?;
-        let request = ClientMessage::GetPlayerView;
-        let json = serde_json::to_vec(&request)?;
+
         while !self.exit {
-            // Send a player view request
+            // Send request with length prefix
+            let request = ClientMessage::GetPlayerView;
+            let json = serde_json::to_vec(&request)?;
+            let len = (json.len() as u32).to_be_bytes();
+            stream.write_all(&len).await?;
             stream.write_all(&json).await?;
-            // Wait for and read the response
-            let mut buf = vec![];
-            let n = stream.read_to_end(&mut buf).await?;
-            let response: ServerMessage = serde_json::from_slice(&buf[..n])?;
+
+            // Read response length prefix
+            let mut len_buf = [0u8; 4];
+            stream.read_exact(&mut len_buf).await?;
+            let len = u32::from_be_bytes(len_buf) as usize;
+
+            // Read response body
+            let mut buf = vec![0u8; len];
+            stream.read_exact(&mut buf).await?;
+            let response: ServerMessage = serde_json::from_slice(&buf)?;
+
             let player_state: PlayerClientState = match response {
                 ServerMessage::PlayerView(data) => serde_json::from_str(&data)?,
                 ServerMessage::DmView(_) => todo!(),
