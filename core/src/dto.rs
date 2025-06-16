@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::combat::entity::{Condition, Entity, EntityType};
 use crate::combat::tracker::CombatTracker;
 use serde::{Deserialize, Serialize};
@@ -8,7 +10,7 @@ pub struct PlayerClientEntity {
     pub id: i32,
     pub current_hp: i32,
     pub max_hp: i32,
-    pub conditions: Vec<Condition>,
+    pub conditions: HashSet<Condition>,
     pub entity_type: EntityType,
     pub initiative: i32,
 }

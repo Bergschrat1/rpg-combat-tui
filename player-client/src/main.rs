@@ -9,6 +9,7 @@ mod app;
 mod cli;
 mod terminal;
 mod ui;
+mod utils;
 
 #[tokio::main]
 async fn main() -> Result<()> {
