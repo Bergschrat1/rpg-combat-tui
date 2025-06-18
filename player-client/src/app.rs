@@ -1,9 +1,11 @@
 use core::dto::PlayerClientState;
 use std::sync::Arc;
 
+use color_eyre::eyre::Context;
 use color_eyre::Result;
 use core::{ClientMessage, ServerMessage};
 use log::{debug, info};
+use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
@@ -57,7 +59,33 @@ impl App {
             self.tracker = player_state;
 
             terminal.draw(|frame| ui::draw(frame, self).expect("Couldn't draw ui!"))?;
+            self.handle_events().wrap_err("handling events failed")?;
         }
         Ok(())
+    }
+
+    fn handle_events(&mut self) -> Result<()> {
+        match event::read()? {
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                let res: Result<()> = self
+                    .handle_key_event(key_event)
+                    .wrap_err("handling key event failed");
+                res
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn handle_key_event(&mut self, key_event: event::KeyEvent) -> Result<()> {
+        match key_event.code {
+            KeyCode::Esc => self.exit(),
+            _text_input => (),
+        };
+        Ok(())
+    }
+
+    fn exit(&mut self) {
+        info!("Application stopped.");
+        self.exit = true;
     }
 }
